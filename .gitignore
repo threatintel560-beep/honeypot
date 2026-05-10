@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Honeypot runtime artifacts
+services/ssh/host_key/*
+!services/ssh/host_key/.gitkeep
+logs/
+data/
+*.log
+
+# ELK data volumes (if bind-mounted)
+elk/elasticsearch/data/
+elk/kibana/data/
+
+# OS
+.DS_Store
+Thumbs.db

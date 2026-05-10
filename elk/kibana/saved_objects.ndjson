@@ -1,0 +1,1 @@
+{"attributes":{"title":"honeypot-events-*","timeFieldName":"@timestamp"},"id":"honeypot-events","type":"index-pattern"}

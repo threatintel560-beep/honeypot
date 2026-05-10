@@ -1,0 +1,102 @@
+services:
+  # ──────────────── Honeypot services ────────────────
+  ssh-honeypot:
+    build:
+      context: .
+      dockerfile: services/ssh/Dockerfile
+    container_name: hp-ssh
+    restart: unless-stopped
+    ports:
+      - "${SSH_PORT:-2222}:2222"
+    env_file: .env
+    volumes:
+      - ./logs/ssh:/var/log/honeypot
+      - ./services/ssh/host_key:/app/host_key
+    networks:
+      - honeynet
+    # Lock down outbound — attackers should not pivot from the honeypot
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    read_only: false
+
+  http-honeypot:
+    build:
+      context: .
+      dockerfile: services/http/Dockerfile
+    container_name: hp-http
+    restart: unless-stopped
+    ports:
+      - "${HTTP_PORT:-8080}:8080"
+    env_file: .env
+    volumes:
+      - ./logs/http:/var/log/honeypot
+      - ./services/http/plugins:/app/plugins:ro
+    networks:
+      - honeynet
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+  # ──────────────── Logging pipeline ────────────────
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:${ELASTIC_VERSION:-8.13.4}
+    container_name: hp-filebeat
+    user: root
+    restart: unless-stopped
+    volumes:
+      - ./elk/filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - ./logs:/var/log/honeypot:ro
+    networks:
+      - honeynet
+    depends_on:
+      - logstash
+
+  logstash:
+    image: docker.elastic.co/logstash/logstash:${ELASTIC_VERSION:-8.13.4}
+    container_name: hp-logstash
+    restart: unless-stopped
+    volumes:
+      - ./elk/logstash/config/logstash.yml:/usr/share/logstash/config/logstash.yml:ro
+      - ./elk/logstash/pipeline:/usr/share/logstash/pipeline:ro
+    environment:
+      LS_JAVA_OPTS: "-Xms512m -Xmx512m"
+    networks:
+      - honeynet
+    depends_on:
+      - elasticsearch
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:${ELASTIC_VERSION:-8.13.4}
+    container_name: hp-elasticsearch
+    restart: unless-stopped
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms1g -Xmx1g
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+    networks:
+      - honeynet
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:${ELASTIC_VERSION:-8.13.4}
+    container_name: hp-kibana
+    restart: unless-stopped
+    ports:
+      - "${KIBANA_PORT:-5601}:5601"
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    networks:
+      - honeynet
+    depends_on:
+      - elasticsearch
+
+networks:
+  honeynet:
+    driver: bridge
+
+volumes:
+  es_data:

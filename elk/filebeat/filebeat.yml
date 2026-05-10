@@ -1,0 +1,23 @@
+filebeat.inputs:
+  - type: filestream
+    id: honeypot-events
+    enabled: true
+    paths:
+      - /var/log/honeypot/*/*.json
+    parsers:
+      - ndjson:
+          target: ""
+          overwrite_keys: true
+          add_error_key: true
+
+processors:
+  - add_host_metadata: ~
+  - drop_fields:
+      fields: ["agent.ephemeral_id", "agent.id", "host.mac"]
+      ignore_missing: true
+
+output.logstash:
+  hosts: ["logstash:5044"]
+
+logging.level: info
+logging.to_files: false
