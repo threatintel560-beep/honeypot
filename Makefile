@@ -1,6 +1,7 @@
 .PHONY: up down rebuild logs tail rotate reload-http reload-ssh export clean ps
 
-COMPOSE := docker compose
+# Auto-detect docker-compose vs docker compose (prefer docker-compose if available)
+COMPOSE := $(shell command -v docker-compose > /dev/null 2>&1 && echo "docker-compose" || echo "docker compose")
 
 up:
 	@test -f .env || cp .env.example .env
