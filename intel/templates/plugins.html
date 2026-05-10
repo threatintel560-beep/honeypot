@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Plugins · HoneyForge Intel{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-bold text-white mb-6">Generated plugins</h1>
+<div class="card">
+  <table class="data">
+    <thead><tr><th>#</th><th>CVE</th><th>Service</th><th>File</th><th>Model</th><th>Status</th><th>Created</th></tr></thead>
+    <tbody>
+    {% for p in rows %}
+      <tr>
+        <td class="font-mono">#{{ p.id }}</td>
+        <td><a class="link font-mono" href="/cves/{{ p.cve_id }}">{{ p.cve_id }}</a></td>
+        <td>{{ p.service }}</td>
+        <td><a class="link" href="/plugins/{{ p.id }}">{{ p.filename }}</a></td>
+        <td class="text-xs text-slate-400 font-mono">{{ p.model_used }}</td>
+        <td><span class="chip chip-{{ p.status }}">{{ p.status }}</span></td>
+        <td class="text-xs text-slate-500">{{ p.created_at }}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="7" class="text-slate-500 text-center py-6">No plugin drafts yet. Open a CVE and click <b>Generate plugin with AI</b>.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

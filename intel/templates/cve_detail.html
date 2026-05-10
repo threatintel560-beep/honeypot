@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}{{ cve.cve_id }} · HoneyForge Intel{% endblock %}
+{% block content %}
+<a class="link text-sm" href="/cves">← all CVEs</a>
+<div class="flex items-center gap-3 mt-2 mb-6">
+  <h1 class="text-2xl font-bold text-white font-mono">{{ cve.cve_id }}</h1>
+  {% if cve.in_kev %}<span class="chip chip-kev">CISA KEV</span>{% endif %}
+  <span class="chip chip-{{ cve.severity[:4] if cve.severity else 'low' }}">
+    {{ cve.severity or 'n/a' }}{% if cve.cvss %} · CVSS {{ cve.cvss }}{% endif %}
+  </span>
+  <span class="chip chip-{{ cve.status.split('_')[0] }}">{{ cve.status }}</span>
+</div>
+
+<div class="grid md:grid-cols-3 gap-6">
+  <div class="md:col-span-2 space-y-6">
+    <div class="card">
+      <h2 class="font-semibold text-white mb-2">Description</h2>
+      <p class="text-slate-300 leading-relaxed">{{ cve.description }}</p>
+      <div class="mt-4 text-sm text-slate-400 space-y-1">
+        <div><b>Vendor:</b> {{ cve.vendor or '—' }}</div>
+        <div><b>Product:</b> {{ cve.product or '—' }}</div>
+        {% if cve.kev_date %}<div><b>KEV added:</b> {{ cve.kev_date }}</div>{% endif %}
+        {% if cve.nvd_published %}<div><b>NVD published:</b> {{ cve.nvd_published }}</div>{% endif %}
+      </div>
+    </div>
+
+    {% if refs %}
+    <div class="card">
+      <h2 class="font-semibold text-white mb-2">References</h2>
+      <ul class="space-y-1 text-sm break-all">
+        {% for r in refs %}<li><a class="link" href="{{ r }}" target="_blank">{{ r }}</a></li>{% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+
+    <div class="card">
+      <h2 class="font-semibold text-white mb-2">Research resources</h2>
+      <p class="text-slate-400 text-sm mb-3">Open these in a new tab to research before generating a plugin:</p>
+      <div class="flex flex-wrap gap-2">
+        <a class="btn" target="_blank" href="https://nvd.nist.gov/vuln/detail/{{ cve.cve_id }}">NVD</a>
+        <a class="btn" target="_blank" href="https://github.com/search?q={{ cve.cve_id }}&type=repositories">GitHub PoCs</a>
+        <a class="btn" target="_blank" href="https://www.exploit-db.com/search?cve={{ cve.cve_id }}">Exploit-DB</a>
+        <a class="btn" target="_blank" href="https://www.google.com/search?q={{ cve.cve_id }}+PoC+exploit">Google</a>
+        <a class="btn" target="_blank" href="https://twitter.com/search?q={{ cve.cve_id }}">Twitter/X</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="space-y-6">
+    <div class="card">
+      <h2 class="font-semibold text-white mb-3">Actions</h2>
+      <form method="post" action="/cves/{{ cve.cve_id }}/generate" class="space-y-2">
+        <label>Service</label>
+        <select name="service">
+          <option value="http" selected>HTTP</option>
+          <option value="ssh">SSH</option>
+        </select>
+        <button class="btn-primary w-full justify-center">Generate plugin with AI</button>
+        <p class="hint">Uses your configured LLM (see Config). Will save as a draft for review.</p>
+      </form>
+      <hr class="my-4 border-slate-800">
+      <form method="post" action="/cves/{{ cve.cve_id }}/status" class="space-y-2">
+        <label>Mark as</label>
+        <select name="status">
+          {% for s in ['new','researched','plugin_drafted','deployed','skipped'] %}
+            <option value="{{ s }}" {% if cve.status==s %}selected{% endif %}>{{ s }}</option>
+          {% endfor %}
+        </select>
+        <button class="btn w-full justify-center">Update status</button>
+      </form>
+    </div>
+
+    {% if plugins %}
+    <div class="card">
+      <h2 class="font-semibold text-white mb-3">Plugin drafts for this CVE</h2>
+      <ul class="space-y-2 text-sm">
+        {% for p in plugins %}
+        <li class="flex items-center justify-between">
+          <a class="link" href="/plugins/{{ p.id }}">{{ p.filename }}</a>
+          <span class="chip chip-{{ p.status }}">{{ p.status }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

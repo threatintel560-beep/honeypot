@@ -25,9 +25,10 @@ cp .env.example .env
 make up
 ```
 
-Kibana: `http://<host>:5601`
-SSH honeypot: `<host>:2222`
-HTTP honeypot: `<host>:8080`
+- Intel UI: `http://<host>:8090` — CVE research, AI plugin generation, IOCs, STIX export
+- Kibana: `http://<host>:5601` — attacker event explorer
+- SSH honeypot: `<host>:2222`
+- HTTP honeypot: `<host>:8080`
 
 ---
 
@@ -80,6 +81,7 @@ See [`docs/ADDING_CVE.md`](docs/ADDING_CVE.md) for the full plugin contract.
 ## Documentation
 
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — system design
+- [`docs/INTEL_MODULE.md`](docs/INTEL_MODULE.md) — AI-powered CVE research, plugin generation & IOC export
 - [`docs/ADDING_CVE.md`](docs/ADDING_CVE.md) — CVE plugin authoring guide
 - [`docs/ANTI_DETECTION.md`](docs/ANTI_DETECTION.md) — staying off Censys / Shodan honeypot tags
 

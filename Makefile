@@ -7,6 +7,7 @@ up:
 	@test -f .env || cp .env.example .env
 	$(COMPOSE) up -d --build
 	@echo ""
+	@echo "  Intel:    http://localhost:$${INTEL_PORT:-8090}"
 	@echo "  Kibana:   http://localhost:$${KIBANA_PORT:-5601}"
 	@echo "  SSH pot:  localhost:$${SSH_PORT:-2222}"
 	@echo "  HTTP pot: localhost:$${HTTP_PORT:-8080}"
@@ -36,6 +37,9 @@ reload-http:
 
 reload-ssh:
 	$(COMPOSE) restart ssh-honeypot
+
+reload-intel:
+	$(COMPOSE) restart intel
 
 export:
 	mkdir -p exports

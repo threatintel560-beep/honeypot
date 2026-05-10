@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Dashboard · HoneyForge Intel{% endblock %}
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+  <h1 class="text-2xl font-bold text-white">Threat intelligence dashboard</h1>
+  <form method="post" action="/cves/watch-now">
+    <button class="btn-primary">Poll KEV + NVD now</button>
+  </form>
+</div>
+
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+  <div class="card">
+    <div class="text-slate-400 text-xs uppercase">CVEs tracked</div>
+    <div class="text-3xl font-bold text-white mt-1">{{ cve_total }}</div>
+    <div class="text-xs text-slate-500 mt-1">{{ cve_new }} new · {{ cve_deployed }} deployed</div>
+  </div>
+  <div class="card">
+    <div class="text-slate-400 text-xs uppercase">In CISA KEV</div>
+    <div class="text-3xl font-bold text-fuchsia-400 mt-1">{{ kev_total }}</div>
+    <div class="text-xs text-slate-500 mt-1">Actively exploited</div>
+  </div>
+  <div class="card">
+    <div class="text-slate-400 text-xs uppercase">Plugin drafts</div>
+    <div class="text-3xl font-bold text-amber-300 mt-1">{{ plugin_drafts }}</div>
+    <div class="text-xs text-slate-500 mt-1">{{ plugin_total }} total</div>
+  </div>
+  <div class="card">
+    <div class="text-slate-400 text-xs uppercase">Unique IOCs</div>
+    <div class="text-3xl font-bold text-sky-400 mt-1">
+      {{ ioc_counts.values() | sum }}
+    </div>
+    <div class="text-xs text-slate-500 mt-1">
+      {% for t,n in ioc_counts.items() %}{{ t }}: {{ n }}{% if not loop.last %} · {% endif %}{% endfor %}
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="flex items-center justify-between mb-4">
+    <h2 class="text-lg font-semibold text-white">Most recent CVEs</h2>
+    <a class="link text-sm" href="/cves">view all →</a>
+  </div>
+  <table class="data">
+    <thead><tr><th>CVE</th><th>Product</th><th>Severity</th><th>CVSS</th><th>Source</th><th>Status</th></tr></thead>
+    <tbody>
+    {% for c in recent_cves %}
+      <tr>
+        <td><a class="link font-mono" href="/cves/{{ c.cve_id }}">{{ c.cve_id }}</a></td>
+        <td>{{ c.vendor }} {{ c.product }}</td>
+        <td>
+          <span class="chip chip-{{ c.severity[:4] if c.severity else 'low' }}">
+            {{ c.severity or 'n/a' }}
+          </span>
+        </td>
+        <td class="font-mono">{{ c.cvss or '—' }}</td>
+        <td>
+          {% if c.in_kev %}<span class="chip chip-kev">KEV</span>{% else %}<span class="text-slate-500">NVD</span>{% endif %}
+        </td>
+        <td><span class="chip chip-{{ c.status.split('_')[0] }}">{{ c.status }}</span></td>
+      </tr>
+    {% else %}
+      <tr><td colspan="6" class="text-slate-500 text-center py-6">No CVEs yet — click <b>Poll KEV + NVD now</b> above.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block title %}Config · HoneyForge Intel{% endblock %}
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+  <h1 class="text-2xl font-bold text-white">Runtime configuration</h1>
+  {% if request.query_params.get('saved') %}
+    <span class="chip chip-deployed">Saved</span>
+  {% endif %}
+</div>
+
+<div class="grid md:grid-cols-2 gap-6">
+  <form method="post" action="/config" class="card space-y-4 md:col-span-2">
+    <h2 class="text-lg font-semibold text-white">LLM backend</h2>
+    <div class="grid md:grid-cols-2 gap-4">
+      <div>
+        <label>Mode</label>
+        <select name="llm_mode">
+          {% for m in ['ollama','openai','template'] %}
+            <option value="{{ m }}" {% if cfg.llm_mode==m %}selected{% endif %}>{{ m }}</option>
+          {% endfor %}
+        </select>
+        <p class="hint">template = no AI, deterministic skeleton. Always works.</p>
+      </div>
+      <div>
+        <label>Model</label>
+        <input name="llm_model" value="{{ cfg.llm_model }}">
+        <p class="hint">e.g. <code>qwen2.5-coder:14b</code>, <code>llama3.1:8b</code>, <code>gpt-4o-mini</code></p>
+      </div>
+      <div>
+        <label>Ollama host</label>
+        <input name="llm_ollama_host" value="{{ cfg.llm_ollama_host }}">
+        <p class="hint">On Docker Desktop Mac/Win, use <code>http://host.docker.internal:11434</code></p>
+      </div>
+      <div>
+        <label>OpenAI / compatible API key</label>
+        <input type="password" name="llm_openai_key" value="{{ cfg.llm_openai_key }}">
+        <p class="hint">Leave blank when using Ollama. Also works with Anthropic via proxy.</p>
+      </div>
+    </div>
+    <div class="flex gap-2">
+      <button class="btn-primary" type="submit">Save LLM settings</button>
+      <button class="btn" type="button" onclick="testLLM()">Test LLM</button>
+      <span id="llm-test-result" class="text-sm self-center"></span>
+    </div>
+
+    <hr class="border-slate-800 my-2">
+
+    <h2 class="text-lg font-semibold text-white">CVE watcher</h2>
+    <div class="grid md:grid-cols-2 gap-4">
+      <div>
+        <label>Minimum CVSS (non-KEV)</label>
+        <input name="cve_min_cvss" value="{{ cfg.cve_min_cvss }}">
+        <p class="hint">CVEs below this score are ignored unless they're in CISA KEV.</p>
+      </div>
+      <div>
+        <label>Only KEV</label>
+        <select name="cve_only_kev">
+          <option value="false" {% if cfg.cve_only_kev=='false' %}selected{% endif %}>No — also track NVD high/critical</option>
+          <option value="true"  {% if cfg.cve_only_kev=='true'  %}selected{% endif %}>Yes — only actively exploited CVEs</option>
+        </select>
+      </div>
+    </div>
+    <div>
+      <label>Watched products (one per line; case-insensitive substring match)</label>
+      <textarea name="cve_watch_products" rows="8">{{ products_list | join('\n') }}</textarea>
+      <p class="hint">A CVE matches if any of these strings appears in its vendor, product, or description.</p>
+    </div>
+
+    <hr class="border-slate-800 my-2">
+
+    <h2 class="text-lg font-semibold text-white">Elasticsearch</h2>
+    <div class="grid md:grid-cols-2 gap-4">
+      <div>
+        <label>URL</label>
+        <input name="es_url" value="{{ cfg.es_url }}">
+      </div>
+      <div>
+        <label>Index pattern</label>
+        <input name="es_index" value="{{ cfg.es_index }}">
+      </div>
+    </div>
+
+    <div class="flex justify-end">
+      <button class="btn-primary" type="submit">Save all settings</button>
+    </div>
+  </form>
+</div>
+
+<script>
+async function testLLM() {
+  const el = document.getElementById('llm-test-result');
+  el.textContent = 'Testing…';
+  el.className = 'text-sm self-center text-slate-400';
+  try {
+    const r = await fetch('/config/llm-test', {method:'POST'});
+    const j = await r.json();
+    el.textContent = `[${j.backend}] ${j.message}`;
+    el.className = 'text-sm self-center ' + (j.ok ? 'text-emerald-400' : 'text-red-400');
+  } catch(e) {
+    el.textContent = 'Error: ' + e;
+    el.className = 'text-sm self-center text-red-400';
+  }
+}
+</script>
+{% endblock %}

@@ -94,9 +94,31 @@ services:
     depends_on:
       - elasticsearch
 
+  # ──────────────── Threat intel module ────────────────
+  intel:
+    build:
+      context: .
+      dockerfile: intel/Dockerfile
+    container_name: hp-intel
+    restart: unless-stopped
+    ports:
+      - "${INTEL_PORT:-8090}:8090"
+    env_file: .env
+    volumes:
+      - intel_data:/data
+      - ./services/http/plugins:/app/generated_plugins
+    extra_hosts:
+      # lets the intel container call Ollama running on the Mac/Win host
+      - "host.docker.internal:host-gateway"
+    networks:
+      - honeynet
+    depends_on:
+      - elasticsearch
+
 networks:
   honeynet:
     driver: bridge
 
 volumes:
   es_data:
+  intel_data:

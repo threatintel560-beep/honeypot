@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}CVEs · HoneyForge Intel{% endblock %}
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+  <h1 class="text-2xl font-bold text-white">CVEs</h1>
+  <form method="post" action="/cves/watch-now">
+    <button class="btn-primary">Refresh feeds</button>
+  </form>
+</div>
+
+<form class="card mb-6 flex flex-wrap gap-4 items-end" method="get">
+  <div>
+    <label>Status</label>
+    <select name="status">
+      <option value="">(any)</option>
+      {% for s in ['new','researched','plugin_drafted','deployed','skipped'] %}
+        <option value="{{ s }}" {% if status_filter==s %}selected{% endif %}>{{ s }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div>
+    <label>KEV only</label>
+    <select name="kev_only">
+      <option value="">No</option>
+      <option value="1" {% if kev_only=='1' %}selected{% endif %}>Yes</option>
+    </select>
+  </div>
+  <button class="btn">Filter</button>
+</form>
+
+<div class="card">
+  <table class="data">
+    <thead>
+      <tr><th>CVE</th><th>Product</th><th>Severity</th><th>CVSS</th><th>KEV</th><th>Status</th><th>Description</th></tr>
+    </thead>
+    <tbody>
+    {% for c in rows %}
+      <tr>
+        <td><a class="link font-mono" href="/cves/{{ c.cve_id }}">{{ c.cve_id }}</a></td>
+        <td class="whitespace-nowrap">{{ c.vendor }} {{ c.product }}</td>
+        <td>
+          <span class="chip chip-{{ c.severity[:4] if c.severity else 'low' }}">
+            {{ c.severity or 'n/a' }}
+          </span>
+        </td>
+        <td class="font-mono">{{ c.cvss or '—' }}</td>
+        <td>{% if c.in_kev %}<span class="chip chip-kev">KEV</span>{% endif %}</td>
+        <td><span class="chip chip-{{ c.status.split('_')[0] }}">{{ c.status }}</span></td>
+        <td class="text-slate-400 max-w-xl truncate">{{ c.description }}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="7" class="text-slate-500 text-center py-6">No CVEs match.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
