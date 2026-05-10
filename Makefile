@@ -44,6 +44,12 @@ reload-intel:
 deploy:
 	@./scripts/deploy_prod.sh
 
+expose:
+	@./scripts/expose_ngrok.sh
+
+expose-honeypot:
+	@./scripts/expose_ngrok.sh --honeypot-only
+
 export:
 	mkdir -p exports
 	$(COMPOSE) exec -T elasticsearch curl -s -u elastic:$${ELASTIC_PASSWORD:-changeme} \
