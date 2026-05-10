@@ -1,4 +1,4 @@
-.PHONY: up down rebuild logs tail rotate reload-http reload-ssh export clean ps
+.PHONY: up down rebuild logs tail rotate reload-http reload-ssh export clean ps deploy demo demo-all
 
 # Auto-detect docker-compose vs docker compose (prefer docker-compose if available)
 COMPOSE := $(shell command -v docker-compose > /dev/null 2>&1 && echo "docker-compose" || echo "docker compose")
@@ -40,6 +40,9 @@ reload-ssh:
 
 reload-intel:
 	$(COMPOSE) restart intel
+
+deploy:
+	@./scripts/deploy_prod.sh
 
 export:
 	mkdir -p exports

@@ -20,6 +20,7 @@ from fastapi.responses import HTMLResponse, PlainTextResponse
 
 from honeycore import Deception, PluginRegistry, Session, get_logger
 from honeycore.plugins import PluginContext
+from service.scanner_profiles import detect_scanner, get_default_page, SCANNER_PATHS
 
 LOG = get_logger("http")
 DECEPTION = Deception.from_env()
@@ -55,6 +56,29 @@ async def catch_all(request: Request, call_next):
     )
 
     DECEPTION.jitter()
+
+    # Detect known scanners (Censys, Shodan, etc.)
+    scanner = detect_scanner(
+        session.src_ip,
+        dict(request.headers),
+    )
+    if scanner:
+        session.event(
+            LOG, "recon_scan",
+            scanner_name=scanner.name,
+            detection_source=scanner.source,
+            method=request.method,
+            path=str(request.url.path),
+        )
+
+    # Serve realistic responses for common scanner probe paths
+    path_lower = str(request.url.path).lower()
+    if path_lower in SCANNER_PATHS:
+        status, ctype, content = SCANNER_PATHS[path_lower]
+        from fastapi.responses import Response as RawResponse
+        resp = RawResponse(content=content, status_code=status,
+                           media_type=ctype)
+        return _decorate(resp)
 
     # Try CVE plugins first
     ctx = PluginContext(
@@ -97,12 +121,7 @@ def _decorate(resp: Response) -> Response:
 
 
 def _default_page(_: Request) -> HTMLResponse:
-    body = """<!DOCTYPE html>
-<html><head><title>Apache2 Ubuntu Default Page: It works</title></head>
-<body><h1>Apache2 Ubuntu Default Page</h1>
-<p>It works! This is the default welcome page used to test the correct operation
-of the Apache2 server after installation on Ubuntu systems.</p>
-</body></html>"""
+    body = get_default_page(DECEPTION.http_server)
     return HTMLResponse(content=body, status_code=200)
 
 

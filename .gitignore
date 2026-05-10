@@ -16,6 +16,7 @@ services/ssh/host_key/*
 !services/ssh/host_key/.gitkeep
 logs/
 data/
+exports/
 *.log
 
 # ELK data volumes (if bind-mounted)

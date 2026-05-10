@@ -85,6 +85,8 @@ _DEFAULT_CONFIG = {
     "cve_only_kev":        "false",
     "es_url":              "http://elasticsearch:9200",
     "es_index":            "honeypot-events-*",
+    "auto_deploy_mode":    "auto_kev",      # manual | auto_kev | auto_all
+    "taxii_api_key":       "",              # empty = no auth required
 }
 
 

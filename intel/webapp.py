@@ -31,6 +31,8 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from . import cve_watcher, ioc_extractor, llm, plugin_generator, stix_builder, storage
+from .taxii_server import router as taxii_router
+from .auto_pipeline import run_full_cycle, get_pipeline_status
 
 logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s %(levelname)s %(name)s %(message)s")
@@ -41,6 +43,7 @@ templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
 app = FastAPI(title="HoneyForge Intel", docs_url=None, redoc_url=None)
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
+app.include_router(taxii_router)
 
 # ── startup: init DB + schedule background jobs ────────────────────
 scheduler = BackgroundScheduler(timezone="UTC")
@@ -53,8 +56,10 @@ def _on_startup():
                       id="cve_watch", next_run_time=_in_seconds(30))
     scheduler.add_job(ioc_extractor.run_once, "interval", minutes=10,
                       id="ioc_extract", next_run_time=_in_seconds(60))
+    scheduler.add_job(run_full_cycle, "interval", hours=12,
+                      id="full_pipeline", next_run_time=_in_seconds(120))
     scheduler.start()
-    log.info("intel webapp ready; background jobs scheduled")
+    log.info("intel webapp ready; background jobs scheduled (including auto-pipeline)")
 
 
 def _in_seconds(n: int):
@@ -279,6 +284,20 @@ def stix_page(request: Request, cve_id: str = "", hours: int = 24):
         hours=hours,
         preview=preview,
     ))
+
+
+# ═══════════════════════════════════════════════════════════════════
+#  Pipeline (auto CVE → plugin → deploy → IOC → STIX)
+# ═══════════════════════════════════════════════════════════════════
+@app.get("/pipeline/status")
+def pipeline_status():
+    return JSONResponse(get_pipeline_status())
+
+
+@app.post("/pipeline/run-now")
+def pipeline_run_now():
+    result = run_full_cycle()
+    return JSONResponse(result)
 
 
 # ═══════════════════════════════════════════════════════════════════
