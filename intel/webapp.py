@@ -30,7 +30,7 @@ from fastapi.responses import (HTMLResponse, JSONResponse, PlainTextResponse,
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from . import cve_watcher, ioc_extractor, llm, plugin_generator, storage
+from . import cve_watcher, ioc_extractor, llm, plugin_generator, stix_builder, storage
 
 logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s %(levelname)s %(name)s %(message)s")
@@ -218,6 +218,67 @@ def iocs_stix(ioc_type: str = "", hours: int = 24):
         bundle,
         headers={"Content-Disposition": f'attachment; filename="iocs-{hours}h.stix.json"'},
     )
+
+
+@app.get("/iocs/stix-full.json")
+def iocs_stix_full(cve_id: str = "", hours: int = 24):
+    """Full STIX bundle with vulnerability, attack-pattern, sightings, and relationships."""
+    bundle = stix_builder.full_stix_bundle(
+        cve_id=cve_id or None,
+        since_seconds=hours * 3600,
+        include_sightings=True,
+        include_attack_patterns=True,
+        include_infrastructure=True,
+        include_plugin_notes=True,
+    )
+    fname = f"honeyforge-stix-full-{cve_id or 'all'}-{hours}h.json"
+    return JSONResponse(
+        bundle,
+        headers={"Content-Disposition": f'attachment; filename="{fname}"'},
+    )
+
+
+# ═══════════════════════════════════════════════════════════════════
+#  STIX Intelligence page — shows the full lifecycle
+# ═══════════════════════════════════════════════════════════════════
+@app.get("/stix", response_class=HTMLResponse)
+def stix_page(request: Request, cve_id: str = "", hours: int = 24):
+    """Page showing the full intelligence lifecycle and STIX output."""
+    cves = storage.list_cves(limit=200)
+    # Get CVEs that have plugins (completed lifecycle)
+    cves_with_plugins = []
+    for cve in cves:
+        plugins = storage.list_plugins(cve_id=cve["cve_id"])
+        if plugins:
+            cves_with_plugins.append({**cve, "plugin_count": len(plugins)})
+
+    # If a specific CVE is selected, build a preview
+    preview = None
+    if cve_id:
+        bundle = stix_builder.full_stix_bundle(
+            cve_id=cve_id,
+            since_seconds=hours * 3600,
+        )
+        type_counts: dict[str, int] = {}
+        for obj in bundle["objects"]:
+            t = obj.get("type", "unknown")
+            type_counts[t] = type_counts.get(t, 0) + 1
+        preview = {
+            "bundle_id": bundle["id"],
+            "object_count": bundle["x_honeyforge_object_count"],
+            "type_counts": type_counts,
+            "sample_objects": bundle["objects"][:10],
+            "generated_at": bundle["x_honeyforge_generated_at"],
+        }
+
+    return templates.TemplateResponse("stix.html", _ctx(
+        request,
+        active="stix",
+        cves_with_plugins=cves_with_plugins,
+        selected_cve=cve_id,
+        hours=hours,
+        preview=preview,
+    ))
 
 
 # ═══════════════════════════════════════════════════════════════════

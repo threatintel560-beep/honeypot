@@ -1,0 +1,217 @@
+{% extends "base.html" %}
+{% block title %}STIX Intelligence — HoneyForge{% endblock %}
+{% block content %}
+<div class="space-y-8">
+
+  <!-- Header -->
+  <div class="flex items-center justify-between">
+    <div>
+      <h1 class="text-2xl font-bold text-white">STIX 2.1 Intelligence Export</h1>
+      <p class="text-slate-400 mt-1">Full lifecycle: CVE researched → plugin generated → attack observed → STIX output</p>
+    </div>
+  </div>
+
+  <!-- Lifecycle flow diagram -->
+  <div class="card">
+    <h2 class="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">Intelligence Lifecycle</h2>
+    <div class="flex items-center justify-between gap-2 text-center">
+      <div class="flex-1 rounded-lg bg-sky-900/30 ring-1 ring-sky-700/50 p-4">
+        <div class="text-2xl mb-1">🔍</div>
+        <div class="text-sm font-medium text-sky-300">1. CVE Research</div>
+        <div class="text-xs text-slate-500 mt-1">KEV + NVD feeds</div>
+      </div>
+      <div class="text-slate-600">→</div>
+      <div class="flex-1 rounded-lg bg-amber-900/30 ring-1 ring-amber-700/50 p-4">
+        <div class="text-2xl mb-1">🤖</div>
+        <div class="text-sm font-medium text-amber-300">2. Plugin Generated</div>
+        <div class="text-xs text-slate-500 mt-1">AI / template</div>
+      </div>
+      <div class="text-slate-600">→</div>
+      <div class="flex-1 rounded-lg bg-red-900/30 ring-1 ring-red-700/50 p-4">
+        <div class="text-2xl mb-1">⚔️</div>
+        <div class="text-sm font-medium text-red-300">3. Attack Observed</div>
+        <div class="text-xs text-slate-500 mt-1">Honeypot captures</div>
+      </div>
+      <div class="text-slate-600">→</div>
+      <div class="flex-1 rounded-lg bg-emerald-900/30 ring-1 ring-emerald-700/50 p-4">
+        <div class="text-2xl mb-1">📦</div>
+        <div class="text-sm font-medium text-emerald-300">4. STIX Output</div>
+        <div class="text-xs text-slate-500 mt-1">MISP / OpenCTI</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CVE selector + download -->
+  <div class="card">
+    <h2 class="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">Generate STIX Bundle</h2>
+    <form method="get" action="/stix" class="flex items-end gap-4 flex-wrap">
+      <div class="flex-1 min-w-[200px]">
+        <label for="cve_id">Filter by CVE (optional)</label>
+        <select name="cve_id" id="cve_id" class="w-full">
+          <option value="">All CVEs with plugins</option>
+          {% for cve in cves_with_plugins %}
+          <option value="{{ cve.cve_id }}" {% if cve.cve_id == selected_cve %}selected{% endif %}>
+            {{ cve.cve_id }} — {{ cve.product }} ({{ cve.plugin_count }} plugin{{ 's' if cve.plugin_count > 1 }})
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label for="hours">Time window</label>
+        <select name="hours" id="hours" class="w-full">
+          <option value="1" {% if hours == 1 %}selected{% endif %}>Last 1 hour</option>
+          <option value="6" {% if hours == 6 %}selected{% endif %}>Last 6 hours</option>
+          <option value="24" {% if hours == 24 %}selected{% endif %}>Last 24 hours</option>
+          <option value="168" {% if hours == 168 %}selected{% endif %}>Last 7 days</option>
+          <option value="720" {% if hours == 720 %}selected{% endif %}>Last 30 days</option>
+          <option value="8760" {% if hours == 8760 %}selected{% endif %}>Last year</option>
+        </select>
+      </div>
+      <button type="submit" class="btn-primary">Preview Bundle</button>
+      <a href="/iocs/stix-full.json?cve_id={{ selected_cve }}&hours={{ hours }}" class="btn">
+        ⬇ Download Full STIX
+      </a>
+      <a href="/iocs/stix.json?hours={{ hours }}" class="btn">
+        ⬇ IOC-only STIX
+      </a>
+    </form>
+  </div>
+
+  {% if preview %}
+  <!-- Bundle preview -->
+  <div class="card">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-sm font-semibold text-slate-400 uppercase tracking-wider">Bundle Preview</h2>
+      <span class="text-xs text-slate-500">{{ preview.bundle_id }}</span>
+    </div>
+
+    <!-- Object type breakdown -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3 mb-6">
+      {% for obj_type, count in preview.type_counts.items() %}
+      <div class="rounded-lg bg-slate-800/50 p-3 text-center">
+        <div class="text-lg font-bold text-white">{{ count }}</div>
+        <div class="text-xs text-slate-400">{{ obj_type }}</div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <div class="text-sm text-slate-400 mb-2">
+      Total objects: <span class="text-white font-medium">{{ preview.object_count }}</span>
+      &nbsp;·&nbsp; Generated: <span class="text-white">{{ preview.generated_at }}</span>
+    </div>
+
+    <!-- Sample objects -->
+    <details class="mt-4">
+      <summary class="cursor-pointer text-sm text-sky-400 hover:text-sky-300">
+        Show sample objects (first 10)
+      </summary>
+      <div class="mt-3 space-y-3">
+        {% for obj in preview.sample_objects %}
+        <div class="rounded bg-slate-800 p-3 text-xs font-mono overflow-x-auto">
+          <div class="text-slate-400 mb-1">
+            <span class="chip chip-{{ 'crit' if obj.type == 'vulnerability' else 'high' if obj.type == 'attack-pattern' else 'new' if obj.type == 'indicator' else 'deployed' if obj.type == 'sighting' else 'med' }}">
+              {{ obj.type }}
+            </span>
+            {% if obj.name %}<span class="ml-2 text-slate-200">{{ obj.name }}</span>{% endif %}
+          </div>
+          {% if obj.pattern %}<div class="text-emerald-400">pattern: {{ obj.pattern }}</div>{% endif %}
+          {% if obj.description %}<div class="text-slate-500 mt-1">{{ obj.description[:120] }}</div>{% endif %}
+          {% if obj.external_references %}
+            {% for ref in obj.external_references %}
+            <div class="text-slate-600">ref: {{ ref.source_name }} {{ ref.external_id or '' }}</div>
+            {% endfor %}
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+    </details>
+  </div>
+  {% endif %}
+
+  <!-- STIX object types explanation -->
+  <div class="card">
+    <h2 class="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">STIX Object Types in Bundle</h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+      <div class="flex gap-3">
+        <span class="chip chip-crit">vulnerability</span>
+        <span class="text-slate-400">The CVE that was researched from KEV/NVD feeds</span>
+      </div>
+      <div class="flex gap-3">
+        <span class="chip chip-high">attack-pattern</span>
+        <span class="text-slate-400">MITRE ATT&CK technique mapped from the CVE</span>
+      </div>
+      <div class="flex gap-3">
+        <span class="chip chip-new">indicator</span>
+        <span class="text-slate-400">IOCs extracted: IPs, URLs, domains, hashes</span>
+      </div>
+      <div class="flex gap-3">
+        <span class="chip chip-deployed">sighting</span>
+        <span class="text-slate-400">Observed attack against the honeypot sensor</span>
+      </div>
+      <div class="flex gap-3">
+        <span class="chip chip-med">infrastructure</span>
+        <span class="text-slate-400">Attacker C2 servers and dropper hosts</span>
+      </div>
+      <div class="flex gap-3">
+        <span class="chip chip-drafted">note</span>
+        <span class="text-slate-400">Plugin generation metadata and context</span>
+      </div>
+      <div class="flex gap-3">
+        <span class="chip chip-low">relationship</span>
+        <span class="text-slate-400">Links between all objects (uses, indicates, based-on)</span>
+      </div>
+      <div class="flex gap-3">
+        <span class="chip chip-reviewed">identity</span>
+        <span class="text-slate-400">HoneyForge sensor identity</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Import instructions -->
+  <div class="card">
+    <h2 class="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">Import Into Threat Intel Platforms</h2>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+      <div>
+        <h3 class="font-medium text-white mb-2">MISP</h3>
+        <ol class="list-decimal list-inside text-slate-400 space-y-1">
+          <li>Event Actions → Import</li>
+          <li>Select "STIX 2" format</li>
+          <li>Upload the .json bundle</li>
+          <li>Review and publish</li>
+        </ol>
+      </div>
+      <div>
+        <h3 class="font-medium text-white mb-2">OpenCTI</h3>
+        <ol class="list-decimal list-inside text-slate-400 space-y-1">
+          <li>Data → Import</li>
+          <li>Upload STIX bundle</li>
+          <li>Objects auto-created</li>
+          <li>Relationships mapped</li>
+        </ol>
+      </div>
+      <div>
+        <h3 class="font-medium text-white mb-2">TAXII 2.1</h3>
+        <ol class="list-decimal list-inside text-slate-400 space-y-1">
+          <li>POST bundle to collection</li>
+          <li><code class="text-xs bg-slate-800 px-1 rounded">POST /collections/{'{id}'}/objects</code></li>
+          <li>Content-Type: application/stix+json</li>
+          <li>Subscribers auto-receive</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+
+  {% if not cves_with_plugins %}
+  <!-- Empty state -->
+  <div class="card text-center py-12">
+    <div class="text-4xl mb-3">📭</div>
+    <h3 class="text-lg font-medium text-white mb-2">No completed intelligence cycles yet</h3>
+    <p class="text-slate-400 mb-4">
+      Generate a plugin for a CVE first, then attacks against it will produce STIX output.
+    </p>
+    <a href="/cves" class="btn-primary">Browse CVEs →</a>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

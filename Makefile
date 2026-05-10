@@ -51,3 +51,12 @@ export:
 clean:
 	$(COMPOSE) down -v
 	rm -rf logs/ data/ exports/
+
+# ──────────────── Demo ────────────────
+demo:
+	@echo "Running end-to-end intelligence lifecycle demo..."
+	python scripts/demo_flow.py --cve CVE-2024-4577
+
+demo-all:
+	@echo "Running demo for all CVEs..."
+	python scripts/demo_flow.py --all
