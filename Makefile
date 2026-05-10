@@ -53,10 +53,16 @@ clean:
 	rm -rf logs/ data/ exports/
 
 # ──────────────── Demo ────────────────
-demo:
-	@echo "Running end-to-end intelligence lifecycle demo..."
-	python scripts/demo_flow.py --cve CVE-2024-4577
+PYTHON := $(shell command -v python3 > /dev/null 2>&1 && echo "python3" || echo "python")
 
-demo-all:
+demo: .venv
+	@echo "Running end-to-end intelligence lifecycle demo..."
+	.venv/bin/python scripts/demo_flow.py --cve CVE-2024-4577
+
+demo-all: .venv
 	@echo "Running demo for all CVEs..."
-	python scripts/demo_flow.py --all
+	.venv/bin/python scripts/demo_flow.py --all
+
+.venv:
+	$(PYTHON) -m venv .venv
+	.venv/bin/pip install --quiet httpx
