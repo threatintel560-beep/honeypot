@@ -1,64 +1,93 @@
 {% extends "base.html" %}
 {% block title %}IOCs · HoneyForge Intel{% endblock %}
 {% block content %}
-<div class="flex items-center justify-between mb-6">
-  <h1 class="text-2xl font-bold text-white">Indicators of Compromise</h1>
-  <div class="flex gap-2">
-    <form method="post" action="/iocs/extract-now">
-      <button class="btn">Extract now</button>
-    </form>
-    <a class="btn-primary" href="/iocs/stix.json?ioc_type={{ ioc_type }}&hours={{ hours }}">
-      Download STIX 2.1
-    </a>
-  </div>
-</div>
+<div class="space-y-6">
 
-<div class="grid grid-cols-2 md:grid-cols-6 gap-3 mb-6">
-  {% for t,n in stats.items() %}
-    <a href="/iocs?ioc_type={{ t }}&hours={{ hours }}" class="card text-center hover:bg-slate-800/50">
-      <div class="text-xs text-slate-400 uppercase">{{ t }}</div>
-      <div class="text-2xl font-bold text-white">{{ n }}</div>
-    </a>
-  {% endfor %}
-</div>
-
-<form class="card mb-6 flex flex-wrap gap-4 items-end" method="get">
-  <div>
-    <label>Type</label>
-    <select name="ioc_type">
-      <option value="">(all)</option>
-      {% for t in ['url','ipv4','domain','sha256','sha1','md5'] %}
-        <option value="{{ t }}" {% if ioc_type==t %}selected{% endif %}>{{ t }}</option>
-      {% endfor %}
-    </select>
+  <div class="flex items-center justify-between">
+    <div>
+      <h1 class="text-2xl font-bold text-white">Indicators of Compromise</h1>
+      <p class="text-sm text-slate-500 mt-1">Extracted from honeypot attack traffic — IPs, URLs, domains, hashes</p>
+    </div>
+    <div class="flex gap-2">
+      <form method="post" action="/iocs/extract-now">
+        <button class="btn">🧬 Extract Now</button>
+      </form>
+      <a class="btn-primary" href="/iocs/stix-full.json?hours={{ hours }}">📦 Download STIX</a>
+    </div>
   </div>
-  <div>
-    <label>Window (hours)</label>
-    <input name="hours" type="number" value="{{ hours }}" min="1" max="8760">
-  </div>
-  <button class="btn">Apply</button>
-</form>
 
-<div class="card">
-  <table class="data">
-    <thead>
-      <tr><th>Type</th><th>Value</th><th>Hits</th><th>Sensors</th><th>CVEs</th><th>First seen</th><th>Last seen</th></tr>
-    </thead>
-    <tbody>
-    {% for r in rows %}
-      <tr>
-        <td><span class="chip chip-new">{{ r.ioc_type }}</span></td>
-        <td class="font-mono break-all max-w-lg">{{ r.value }}</td>
-        <td>{{ r.hit_count }}</td>
-        <td class="text-xs text-slate-400">{{ r.sensors_list | join(', ') }}</td>
-        <td class="text-xs font-mono">{{ r.cves_list | join(', ') }}</td>
-        <td class="text-xs text-slate-500">{{ r.first_seen }}</td>
-        <td class="text-xs text-slate-400">{{ r.last_seen }}</td>
-      </tr>
-    {% else %}
-      <tr><td colspan="7" class="text-slate-500 text-center py-6">No IOCs yet.</td></tr>
+  <!-- Stats -->
+  {% if stats %}
+  <div class="grid grid-cols-2 md:grid-cols-6 gap-3">
+    {% for t,n in stats.items() %}
+      <a href="/iocs?ioc_type={{ t }}&hours={{ hours }}" 
+         class="card text-center hover:ring-cyan-800/50 transition-all {% if ioc_type==t %}ring-cyan-500/50 bg-cyan-950/20{% endif %}">
+        <div class="text-xs text-slate-500 uppercase font-mono">{{ t }}</div>
+        <div class="text-2xl font-bold text-white font-mono mt-1">{{ n }}</div>
+      </a>
     {% endfor %}
-    </tbody>
-  </table>
+  </div>
+  {% endif %}
+
+  <!-- Filters -->
+  <form class="card flex flex-wrap gap-4 items-end" method="get">
+    <div>
+      <label>Type</label>
+      <select name="ioc_type" class="w-full">
+        <option value="">All types</option>
+        {% for t in ['url','ipv4','domain','sha256','sha1','md5'] %}
+          <option value="{{ t }}" {% if ioc_type==t %}selected{% endif %}>{{ t }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label>Time Window</label>
+      <select name="hours" class="w-full">
+        {% for h in [1, 6, 24, 168, 720] %}
+          <option value="{{ h }}" {% if hours==h %}selected{% endif %}>Last {{ h }}h{% if h>=24 %} ({{ h//24 }}d){% endif %}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button class="btn">Apply</button>
+  </form>
+
+  <!-- Table -->
+  <div class="card overflow-x-auto">
+    <table class="data">
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Value</th>
+          <th>Hits</th>
+          <th>Linked CVEs</th>
+          <th>Sensors</th>
+          <th>First Seen</th>
+          <th>Last Seen</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for r in rows %}
+        <tr>
+          <td><span class="chip chip-new font-mono">{{ r.ioc_type }}</span></td>
+          <td class="font-mono text-xs text-slate-200 break-all max-w-md">{{ r.value }}</td>
+          <td class="font-mono text-xs text-slate-300">{{ r.hit_count }}</td>
+          <td class="text-xs">
+            {% for cve in r.cves_list %}
+              <a class="link font-mono" href="/cves/{{ cve }}">{{ cve }}</a>{% if not loop.last %}, {% endif %}
+            {% endfor %}
+          </td>
+          <td class="text-xs text-slate-500">{{ r.sensors_list | join(', ') }}</td>
+          <td class="text-xs text-slate-500 whitespace-nowrap">{{ r.first_seen }}</td>
+          <td class="text-xs text-slate-500 whitespace-nowrap">{{ r.last_seen }}</td>
+        </tr>
+      {% else %}
+        <tr><td colspan="7" class="text-slate-600 text-center py-8">
+          No IOCs yet. Deploy a plugin, wait for attacks, then click <span class="text-cyan-400">Extract Now</span>.
+        </td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
 </div>
 {% endblock %}
