@@ -134,11 +134,14 @@ def _decorate(resp: Response) -> Response:
         if PRODUCT.server_header:
             resp.headers["Server"] = PRODUCT.server_header
         else:
-            resp.headers.pop("Server", None)
+            # Remove Server header — some products (FortiGate) don't send one
+            if "Server" in resp.headers:
+                del resp.headers["Server"]
         for k, v in PRODUCT.extra_headers.items():
             resp.headers.setdefault(k, v)
         # Remove generic headers that would give us away
-        resp.headers.pop("X-Powered-By", None)
+        if "X-Powered-By" in resp.headers:
+            del resp.headers["X-Powered-By"]
     else:
         resp.headers["Server"] = DECEPTION.http_server
         resp.headers.setdefault("X-Powered-By", "PHP/8.1.2-1ubuntu2.14")
