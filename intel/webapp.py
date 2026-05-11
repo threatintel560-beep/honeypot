@@ -156,8 +156,8 @@ def cve_watch_now():
 def cve_rebuild():
     """Clear all CVE data and re-fetch from feeds."""
     with storage.db() as c:
-        c.execute("DELETE FROM cves")
         c.execute("DELETE FROM plugins")
+        c.execute("DELETE FROM cves")
     cve_watcher.run_once()
     return RedirectResponse("/cves", status_code=303)
 
