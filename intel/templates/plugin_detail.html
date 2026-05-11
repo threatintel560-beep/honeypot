@@ -1,48 +1,51 @@
 {% extends "base.html" %}
-{% block title %}{{ plugin.filename }} · HoneyForge Intel{% endblock %}
+{% block title %}{{ plugin.filename }} · HoneyForge{% endblock %}
 {% block content %}
 <div class="space-y-6">
 
-  <a class="link text-sm" href="/plugins">← all plugins</a>
+  <a class="link text-sm inline-flex items-center gap-1" href="/plugins">
+    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+    All plugins
+  </a>
 
-  <div class="flex items-center justify-between">
+  <div class="flex items-start justify-between gap-4 flex-wrap">
     <div>
-      <h1 class="text-2xl font-bold text-white font-mono">{{ plugin.filename }}</h1>
-      <div class="flex items-center gap-3 mt-2 text-sm">
+      <h1 class="font-serif text-2xl text-ink-900 font-mono">{{ plugin.filename }}</h1>
+      <div class="flex items-center gap-3 mt-2 text-sm text-ink-500">
         <a class="link font-mono" href="/cves/{{ plugin.cve_id }}">{{ plugin.cve_id }}</a>
-        <span class="text-slate-600">·</span>
-        <span class="text-slate-400">model: <span class="font-mono text-slate-300">{{ plugin.model_used }}</span></span>
-        <span class="text-slate-600">·</span>
+        <span>·</span>
+        <span>Model: <span class="font-mono text-ink-700">{{ plugin.model_used }}</span></span>
+        <span>·</span>
         {% if plugin.service == 'http' %}
-          <span class="inline-flex items-center gap-1.5 text-xs">
-            <span class="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
-            <span class="text-cyan-300">HTTP :8080</span>
+          <span class="inline-flex items-center gap-1.5">
+            <span class="w-1.5 h-1.5 rounded-full bg-blue-400"></span>
+            HTTP :8080
           </span>
         {% else %}
-          <span class="inline-flex items-center gap-1.5 text-xs">
+          <span class="inline-flex items-center gap-1.5">
             <span class="w-1.5 h-1.5 rounded-full bg-purple-400"></span>
-            <span class="text-purple-300">SSH :2222</span>
+            SSH :2222
           </span>
         {% endif %}
-        <span class="text-slate-600">·</span>
+        <span>·</span>
         {% if plugin.status == 'deployed' %}
-          <span class="chip chip-deployed">🟢 live — catching attacks</span>
+          <span class="chip chip-deployed">● live — catching attacks</span>
         {% elif plugin.status == 'reviewed' %}
-          <span class="chip chip-reviewed">reviewed — ready to deploy</span>
+          <span class="chip chip-reviewed">reviewed</span>
         {% else %}
-          <span class="chip chip-draft">draft — needs review</span>
+          <span class="chip chip-draft">draft</span>
         {% endif %}
       </div>
     </div>
     <div class="flex gap-2">
       {% if plugin.status == 'draft' %}
         <form method="post" action="/plugins/{{ plugin.id }}/review">
-          <button class="btn">✓ Mark Reviewed</button>
+          <button class="btn">Mark Reviewed</button>
         </form>
       {% endif %}
       <form method="post" action="/plugins/{{ plugin.id }}/deploy"
             onsubmit="return confirm('Deploy this plugin to the honeypot? Run make reload-http after.');">
-        <button class="btn-primary">🚀 Deploy to Honeypot</button>
+        <button class="btn-primary">Deploy to Honeypot</button>
       </form>
     </div>
   </div>
@@ -51,40 +54,34 @@
   <div class="card">
     <form method="post" action="/plugins/{{ plugin.id }}/save" class="space-y-3">
       <div class="flex items-center justify-between">
-        <label class="mb-0 text-sm text-slate-400">Plugin Source Code (Python)</label>
-        <button class="btn-primary text-xs" type="submit">💾 Save Changes</button>
+        <span class="section-title mb-0">Plugin Source Code (Python)</span>
+        <button class="btn-primary" type="submit">Save Changes</button>
       </div>
-      <textarea name="code" rows="30" spellcheck="false"
-                class="w-full font-mono text-xs leading-relaxed bg-[#0d1117] border-[#21262d] text-slate-200 p-4 rounded-lg">{{ plugin.code }}</textarea>
+      <textarea name="code" rows="30" spellcheck="false" class="code">{{ plugin.code }}</textarea>
     </form>
   </div>
 
-  <!-- What this plugin does -->
   <div class="grid lg:grid-cols-2 gap-6">
     <div class="card">
-      <h2 class="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">What Attackers See</h2>
-      <div class="text-sm text-slate-400 space-y-2">
-        <p>When an attacker sends an exploit matching <strong class="text-white">{{ plugin.cve_id }}</strong> to your honeypot:</p>
-        <ol class="list-decimal list-inside space-y-1 text-slate-500">
-          <li>The plugin's <code class="text-cyan-400">matches()</code> detects the exploit signature</li>
-          <li>The plugin's <code class="text-cyan-400">handle()</code> logs the full payload</li>
-          <li>A realistic response is returned (attacker thinks it worked)</li>
-          <li>IOC extractor pulls IPs, URLs, hashes from the captured data</li>
-        </ol>
-      </div>
+      <div class="section-title">What Attackers See</div>
+      <p class="text-sm text-ink-700 mb-3">When an attacker sends an exploit matching <strong class="font-mono">{{ plugin.cve_id }}</strong>:</p>
+      <ol class="space-y-2 text-sm text-ink-600">
+        <li class="flex gap-3"><span class="text-coral-500 font-medium">1.</span> Plugin's <code>matches()</code> detects the exploit signature</li>
+        <li class="flex gap-3"><span class="text-coral-500 font-medium">2.</span> Plugin's <code>handle()</code> logs the full payload</li>
+        <li class="flex gap-3"><span class="text-coral-500 font-medium">3.</span> Realistic response returned (attacker thinks it worked)</li>
+        <li class="flex gap-3"><span class="text-coral-500 font-medium">4.</span> IOC extractor pulls IPs, URLs, hashes</li>
+      </ol>
     </div>
 
     <div class="card">
-      <h2 class="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">Deployment Steps</h2>
-      <div class="text-sm text-slate-400 space-y-2">
-        <ol class="list-decimal list-inside space-y-1.5">
-          <li>Review the code above — check <code class="text-cyan-400">matches()</code> and <code class="text-cyan-400">handle()</code></li>
-          <li>Click <span class="text-cyan-300">Deploy to Honeypot</span> (writes to <code class="text-slate-300">/app/generated_plugins</code>)</li>
-          <li>Run <code class="text-cyan-400 bg-[#0d1117] px-1.5 py-0.5 rounded">make reload-http</code> to load the new plugin</li>
-          <li>Test: <code class="text-cyan-400 bg-[#0d1117] px-1.5 py-0.5 rounded">curl http://localhost:8080/...</code></li>
-          <li>Check logs: <code class="text-cyan-400 bg-[#0d1117] px-1.5 py-0.5 rounded">make tail</code></li>
-        </ol>
-      </div>
+      <div class="section-title">Deployment Steps</div>
+      <ol class="space-y-2 text-sm text-ink-600">
+        <li class="flex gap-3"><span class="text-coral-500 font-medium">1.</span> Review the code — check <code>matches()</code> and <code>handle()</code></li>
+        <li class="flex gap-3"><span class="text-coral-500 font-medium">2.</span> Click <strong class="text-ink-900">Deploy to Honeypot</strong></li>
+        <li class="flex gap-3"><span class="text-coral-500 font-medium">3.</span> Run <code>make reload-http</code> to load</li>
+        <li class="flex gap-3"><span class="text-coral-500 font-medium">4.</span> Test: <code>curl http://localhost:8080/...</code></li>
+        <li class="flex gap-3"><span class="text-coral-500 font-medium">5.</span> Check logs: <code>make tail</code></li>
+      </ol>
     </div>
   </div>
 

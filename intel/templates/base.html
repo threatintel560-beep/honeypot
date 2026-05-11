@@ -1,162 +1,456 @@
 <!doctype html>
-<html lang="en" class="h-full bg-[#0a0e17] text-slate-200">
+<html lang="en" class="h-full">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{% block title %}HoneyForge Intel{% endblock %}</title>
+<title>{% block title %}HoneyForge{% endblock %}</title>
 <script src="https://cdn.tailwindcss.com"></script>
-<script src="https://unpkg.com/htmx.org@1.9.12" defer></script>
+<script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
 <script>
 tailwind.config = {
   theme: {
     extend: {
       colors: {
-        'hf-bg': '#0a0e17',
-        'hf-card': '#111827',
-        'hf-border': '#1e293b',
-        'hf-accent': '#06b6d4',
-        'hf-glow': '#22d3ee',
+        // Claude-inspired warm palette
+        cream: {
+          50:  '#faf9f6',
+          100: '#f5f4ed',
+          200: '#ede9db',
+          300: '#ddd6c1',
+        },
+        ink: {
+          50:  '#f7f7f5',
+          100: '#e8e6e1',
+          200: '#c9c5bc',
+          300: '#a8a39a',
+          400: '#87837b',
+          500: '#63605a',
+          600: '#4a4844',
+          700: '#38362f',
+          800: '#272722',
+          900: '#1a1a17',
+          950: '#0f0f0d',
+        },
+        coral: {
+          50:  '#fff4f0',
+          100: '#ffe4d9',
+          200: '#ffc4ad',
+          300: '#ff9f7a',
+          400: '#f97a4d',
+          500: '#d97757',  // Claude's signature orange
+          600: '#c15f3a',
+          700: '#9e4e30',
+          800: '#82402a',
+          900: '#6a3624',
+        },
       },
       fontFamily: {
-        mono: ['JetBrains Mono', 'Fira Code', 'SF Mono', 'monospace'],
-      }
+        sans: ['Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'sans-serif'],
+        serif: ['"Crimson Pro"', 'Georgia', 'serif'],
+        mono: ['"JetBrains Mono"', '"SF Mono"', 'ui-monospace', 'monospace'],
+      },
     }
   }
 }
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Crimson+Pro:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-  body { font-family: 'Inter', ui-sans-serif, system-ui, sans-serif; }
-  .font-mono, code, pre, textarea { font-family: 'JetBrains Mono', monospace; }
-  
-  /* Glow effects */
-  .glow-cyan { box-shadow: 0 0 20px rgba(6, 182, 212, 0.15), inset 0 1px 0 rgba(6, 182, 212, 0.1); }
-  .glow-amber { box-shadow: 0 0 20px rgba(245, 158, 11, 0.15), inset 0 1px 0 rgba(245, 158, 11, 0.1); }
-  .glow-red { box-shadow: 0 0 20px rgba(239, 68, 68, 0.15), inset 0 1px 0 rgba(239, 68, 68, 0.1); }
-  .glow-green { box-shadow: 0 0 20px rgba(34, 197, 94, 0.15), inset 0 1px 0 rgba(34, 197, 94, 0.1); }
-  
-  /* Terminal style */
-  .terminal { background: #0d1117; border: 1px solid #21262d; border-radius: 8px; }
-  .terminal-header { background: #161b22; border-bottom: 1px solid #21262d; padding: 8px 12px; border-radius: 8px 8px 0 0; }
-  .terminal-dots { display: flex; gap: 6px; }
-  .terminal-dots span { width: 10px; height: 10px; border-radius: 50%; }
-  .terminal-dots .red { background: #ff5f57; }
-  .terminal-dots .yellow { background: #febc2e; }
-  .terminal-dots .green { background: #28c840; }
-  
-  /* Chips */
-  .chip { @apply inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium; }
-  .chip-critical { @apply bg-red-900/60 text-red-200 ring-1 ring-red-500/40; }
-  .chip-high { @apply bg-orange-900/60 text-orange-200 ring-1 ring-orange-500/40; }
-  .chip-medium { @apply bg-yellow-900/60 text-yellow-200 ring-1 ring-yellow-500/40; }
-  .chip-low { @apply bg-green-900/60 text-green-200 ring-1 ring-green-500/40; }
-  .chip-crit { @apply bg-red-900/60 text-red-200 ring-1 ring-red-500/40; }
-  .chip-kev { @apply bg-fuchsia-900/60 text-fuchsia-200 ring-1 ring-fuchsia-500/40; }
-  .chip-new { @apply bg-cyan-900/60 text-cyan-200 ring-1 ring-cyan-500/40; }
-  .chip-drafted { @apply bg-amber-900/60 text-amber-200 ring-1 ring-amber-500/40; }
-  .chip-plugin { @apply bg-amber-900/60 text-amber-200 ring-1 ring-amber-500/40; }
-  .chip-deployed { @apply bg-emerald-900/60 text-emerald-200 ring-1 ring-emerald-500/40; }
-  .chip-reviewed { @apply bg-teal-900/60 text-teal-200 ring-1 ring-teal-500/40; }
-  .chip-draft { @apply bg-slate-700/60 text-slate-200 ring-1 ring-slate-500/40; }
-  .chip-researched { @apply bg-blue-900/60 text-blue-200 ring-1 ring-blue-500/40; }
-  .chip-skipped { @apply bg-slate-800 text-slate-400 ring-1 ring-slate-600; }
-  
-  /* Buttons */
-  .link { @apply text-cyan-400 hover:text-cyan-300 underline-offset-4 hover:underline; }
-  .btn { @apply inline-flex items-center gap-1.5 rounded-md bg-slate-800 px-3 py-1.5 text-sm font-medium text-slate-100 ring-1 ring-slate-700 hover:bg-slate-700 transition-all; }
-  .btn-primary { @apply inline-flex items-center gap-1.5 rounded-md bg-cyan-600 px-3 py-1.5 text-sm font-medium text-white ring-1 ring-cyan-500 hover:bg-cyan-500 transition-all hover:shadow-lg hover:shadow-cyan-500/20; }
-  .btn-danger { @apply inline-flex items-center gap-1.5 rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white ring-1 ring-red-500 hover:bg-red-500 transition-all; }
-  .btn-success { @apply inline-flex items-center gap-1.5 rounded-md bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white ring-1 ring-emerald-500 hover:bg-emerald-500 transition-all; }
-  
-  /* Navigation */
-  .nav-link { @apply inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-slate-400 hover:bg-slate-800/50 hover:text-white transition-all; }
-  .nav-link.active { @apply bg-slate-800/80 text-white ring-1 ring-slate-700; }
-  
-  /* Cards */
-  .card { @apply rounded-lg bg-[#111827] ring-1 ring-[#1e293b] p-5; }
-  .card-glow { @apply rounded-lg bg-[#111827] ring-1 ring-cyan-900/50 p-5 glow-cyan; }
-  
-  /* Tables */
-  table.data { @apply w-full text-sm text-left; }
-  table.data thead { @apply bg-[#0d1117] text-slate-500 text-xs uppercase tracking-wider; }
-  table.data th, table.data td { @apply px-3 py-2.5 border-b border-[#1e293b]; }
-  table.data tbody tr:hover { @apply bg-slate-800/30; }
-  
-  /* Forms */
-  input, select, textarea { @apply bg-[#0d1117] border border-[#1e293b] rounded-md px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 transition-all; }
-  label { @apply block text-sm font-medium text-slate-400 mb-1; }
-  .hint { @apply text-xs text-slate-600 mt-1; }
-  
-  /* Pulse animation for live indicators */
-  @keyframes pulse-glow {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
+  body { 
+    font-family: 'Inter', ui-sans-serif, system-ui, sans-serif; 
+    background: #faf9f6;
+    color: #272722;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
-  .pulse-live { animation: pulse-glow 2s ease-in-out infinite; }
   
+  .font-serif { font-family: 'Crimson Pro', Georgia, serif; font-feature-settings: 'liga', 'kern'; }
+  .font-mono, code, pre, textarea.code { font-family: 'JetBrains Mono', 'SF Mono', monospace; }
+
+  /* Core components */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.5rem 0.875rem;
+    background: #ffffff;
+    color: #272722;
+    border: 1px solid #c9c5bc;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .btn:hover { background: #f7f7f5; border-color: #a8a39a; }
+  .btn:active { transform: translateY(1px); }
+
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.5rem 0.875rem;
+    background: #d97757;
+    color: #ffffff;
+    border: 1px solid #c15f3a;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .btn-primary:hover { background: #c15f3a; }
+  .btn-primary:active { transform: translateY(1px); }
+
+  .btn-danger {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.5rem 0.875rem;
+    background: #ffffff;
+    color: #c15f3a;
+    border: 1px solid #ffc4ad;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .btn-danger:hover { background: #fff4f0; border-color: #f97a4d; color: #9e4e30; }
+
+  /* Navigation */
+  .nav-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.875rem;
+    color: #63605a;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: all 0.15s ease;
+  }
+  .nav-link:hover { background: #f5f4ed; color: #272722; }
+  .nav-link.active { 
+    background: #272722; 
+    color: #faf9f6;
+  }
+
+  /* Cards */
+  .card {
+    background: #ffffff;
+    border: 1px solid #ede9db;
+    border-radius: 0.875rem;
+    padding: 1.5rem;
+    box-shadow: 0 1px 2px rgba(39, 39, 34, 0.04);
+  }
+  .card-quiet {
+    background: #f7f7f5;
+    border: 1px solid #ede9db;
+    border-radius: 0.875rem;
+    padding: 1.5rem;
+  }
+
+  /* Chips / Tags */
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.125rem 0.5rem;
+    border-radius: 0.375rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    line-height: 1.25;
+  }
+  .chip-critical { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+  .chip-high { background: #fff7ed; color: #9a3412; border: 1px solid #fed7aa; }
+  .chip-medium { background: #fefce8; color: #854d0e; border: 1px solid #fde68a; }
+  .chip-low { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+  .chip-crit { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+  .chip-kev { background: #fdf4ff; color: #86198f; border: 1px solid #f5d0fe; }
+  .chip-new { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
+  .chip-researched { background: #f0f9ff; color: #075985; border: 1px solid #bae6fd; }
+  .chip-plugin, .chip-drafted { background: #fff7ed; color: #9a3412; border: 1px solid #fed7aa; }
+  .chip-deployed { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+  .chip-reviewed { background: #ecfeff; color: #155e75; border: 1px solid #a5f3fc; }
+  .chip-draft { background: #f7f7f5; color: #63605a; border: 1px solid #c9c5bc; }
+  .chip-skipped { background: #f7f7f5; color: #87837b; border: 1px solid #c9c5bc; }
+
+  /* Forms — critical contrast fixes */
+  input[type="text"],
+  input[type="password"],
+  input[type="email"],
+  input[type="number"],
+  input[type="search"],
+  input[type="url"],
+  input:not([type]),
+  select,
+  textarea {
+    background: #ffffff !important;
+    color: #272722 !important;
+    border: 1px solid #c9c5bc !important;
+    border-radius: 0.5rem !important;
+    padding: 0.5rem 0.75rem !important;
+    font-size: 0.875rem !important;
+    outline: none !important;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
+    width: 100%;
+  }
+  input:focus, select:focus, textarea:focus {
+    border-color: #d97757 !important;
+    box-shadow: 0 0 0 3px rgba(217, 119, 87, 0.15) !important;
+  }
+  input::placeholder, textarea::placeholder {
+    color: #a8a39a !important;
+  }
+  select option {
+    background: #ffffff;
+    color: #272722;
+  }
+  label {
+    display: block;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: #4a4844;
+    margin-bottom: 0.375rem;
+  }
+  .hint {
+    font-size: 0.75rem;
+    color: #87837b;
+    margin-top: 0.375rem;
+    line-height: 1.5;
+  }
+
+  /* Links */
+  .link {
+    color: #d97757;
+    text-decoration: none;
+    transition: color 0.15s ease;
+  }
+  .link:hover {
+    color: #c15f3a;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  /* Tables */
+  table.data {
+    width: 100%;
+    text-align: left;
+    border-collapse: collapse;
+  }
+  table.data thead tr {
+    border-bottom: 1px solid #ede9db;
+  }
+  table.data th {
+    padding: 0.625rem 0.875rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #63605a;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  table.data td {
+    padding: 0.75rem 0.875rem;
+    font-size: 0.875rem;
+    color: #272722;
+    border-bottom: 1px solid #f5f4ed;
+  }
+  table.data tbody tr:hover {
+    background: #faf9f6;
+  }
+  table.data tbody tr:last-child td {
+    border-bottom: none;
+  }
+
+  /* Code blocks */
+  pre.code-block, .terminal {
+    background: #272722;
+    color: #e8e6e1;
+    border-radius: 0.75rem;
+    border: 1px solid #38362f;
+    overflow: hidden;
+  }
+  .terminal-header {
+    background: #1a1a17;
+    border-bottom: 1px solid #38362f;
+    padding: 0.625rem 0.875rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .terminal-dots { display: flex; gap: 0.375rem; }
+  .terminal-dots span {
+    width: 0.75rem;
+    height: 0.75rem;
+    border-radius: 9999px;
+    background: #4a4844;
+  }
+  .terminal-body {
+    padding: 1rem 1.25rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8125rem;
+    line-height: 1.7;
+    color: #c9c5bc;
+  }
+  .terminal-body .prompt { color: #d97757; }
+  .terminal-body .comment { color: #63605a; }
+  .terminal-body .keyword { color: #8fb9a8; }
+  .terminal-body .string { color: #e8c99b; }
+
+  /* Inline code */
+  .prose code, p code, li code, span code {
+    background: #f5f4ed;
+    color: #4a4844;
+    padding: 0.125rem 0.375rem;
+    border-radius: 0.25rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8125em;
+    border: 1px solid #ede9db;
+  }
+
+  /* Stat cards */
+  .stat-card {
+    background: #ffffff;
+    border: 1px solid #ede9db;
+    border-radius: 0.875rem;
+    padding: 1.25rem;
+    transition: all 0.2s ease;
+  }
+  .stat-card:hover {
+    border-color: #ddd6c1;
+    box-shadow: 0 4px 12px rgba(39, 39, 34, 0.06);
+  }
+
+  /* Status indicator */
+  .status-dot {
+    display: inline-block;
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 9999px;
+    background: #10b981;
+    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+  }
+  .status-dot.offline { background: #a8a39a; box-shadow: none; }
+  
+  @keyframes pulse-subtle {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+  }
+  .pulse-live { animation: pulse-subtle 2.5s ease-in-out infinite; }
+
   /* Scrollbar */
-  ::-webkit-scrollbar { width: 6px; height: 6px; }
-  ::-webkit-scrollbar-track { background: #0a0e17; }
-  ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 3px; }
-  ::-webkit-scrollbar-thumb:hover { background: #334155; }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: #faf9f6; }
+  ::-webkit-scrollbar-thumb { background: #ddd6c1; border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: #c9c5bc; }
+
+  /* Details/Summary */
+  details summary {
+    cursor: pointer;
+    list-style: none;
+    user-select: none;
+  }
+  details summary::-webkit-details-marker { display: none; }
+  details[open] summary .arrow { transform: rotate(90deg); }
+  .arrow { transition: transform 0.2s ease; display: inline-block; }
+
+  /* Code textarea */
+  textarea.code {
+    background: #272722 !important;
+    color: #e8e6e1 !important;
+    border: 1px solid #38362f !important;
+    font-family: 'JetBrains Mono', monospace !important;
+    font-size: 0.75rem !important;
+    line-height: 1.6 !important;
+    padding: 1rem !important;
+  }
+  textarea.code:focus {
+    border-color: #d97757 !important;
+    box-shadow: 0 0 0 3px rgba(217, 119, 87, 0.15) !important;
+  }
+
+  /* Notice banners */
+  .notice {
+    background: #fff7ed;
+    border: 1px solid #fed7aa;
+    color: #7c2d12;
+    border-radius: 0.75rem;
+    padding: 0.875rem 1rem;
+    font-size: 0.875rem;
+  }
+  .notice-info {
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    color: #1e3a8a;
+    border-radius: 0.75rem;
+    padding: 0.875rem 1rem;
+    font-size: 0.875rem;
+  }
+
+  /* Section headers */
+  .section-title {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #63605a;
+    text-transform: uppercase;
+    letter-spacing: 0.075em;
+    margin-bottom: 0.875rem;
+  }
+
+  /* Smooth fade in */
+  [x-cloak] { display: none !important; }
 </style>
 </head>
 <body class="min-h-full">
-<header class="border-b border-[#1e293b] bg-[#0a0e17]/95 backdrop-blur-xl sticky top-0 z-50">
-  <div class="max-w-[1600px] mx-auto px-6 py-3 flex items-center justify-between">
-    <a href="/" class="flex items-center gap-3 group">
-      <div class="relative">
-        <span class="inline-block w-2.5 h-2.5 rounded-full bg-cyan-400 pulse-live"></span>
-        <span class="absolute inset-0 w-2.5 h-2.5 rounded-full bg-cyan-400 animate-ping opacity-30"></span>
+
+<!-- Top nav -->
+<header class="sticky top-0 z-40 bg-cream-50/95 backdrop-blur-sm border-b border-cream-200">
+  <div class="max-w-[1400px] mx-auto px-6">
+    <div class="flex items-center justify-between h-14">
+      <a href="/" class="flex items-center gap-3">
+        <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-coral-400 to-coral-600 flex items-center justify-center shadow-sm">
+          <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L3 7v10l9 5 9-5V7l-9-5zm0 2.236L18.618 8 12 11.764 5.382 8 12 4.236zM5 9.854l6 3.4v6.927l-6-3.333V9.854zm8 10.327v-6.927l6-3.4v6.994l-6 3.333z"/></svg>
+        </div>
+        <div>
+          <div class="font-serif text-lg leading-none text-ink-900">HoneyForge</div>
+          <div class="text-[10px] font-mono text-ink-400 mt-0.5 tracking-wider">INTEL v0.3</div>
+        </div>
+      </a>
+      
+      <nav class="flex items-center gap-1">
+        <a href="/"          class="nav-link {% if active=='dashboard' %}active{% endif %}">Dashboard</a>
+        <a href="/cves"      class="nav-link {% if active=='cves' %}active{% endif %}">CVEs</a>
+        <a href="/plugins"   class="nav-link {% if active=='plugins' %}active{% endif %}">Plugins</a>
+        <a href="/services"  class="nav-link {% if active=='services' %}active{% endif %}">Services</a>
+        <a href="/iocs"      class="nav-link {% if active=='iocs' %}active{% endif %}">IOCs</a>
+        <a href="/stix"      class="nav-link {% if active=='stix' %}active{% endif %}">STIX</a>
+        <a href="/network"   class="nav-link {% if active=='network' %}active{% endif %}">Network</a>
+        <a href="/config"    class="nav-link {% if active=='config' %}active{% endif %}">Config</a>
+      </nav>
+
+      <div class="flex items-center gap-3">
+        <div class="flex items-center gap-2 text-xs text-ink-500">
+          <span class="status-dot pulse-live"></span>
+          <span class="font-medium">Live</span>
+        </div>
       </div>
-      <span class="text-xl font-bold tracking-tight text-white">Honey<span class="text-cyan-400">Forge</span></span>
-      <span class="text-xs font-mono text-slate-600 hidden sm:inline">v0.2.0</span>
-    </a>
-    <nav class="flex gap-1">
-      <a href="/"          class="nav-link {% if active=='dashboard' %}active{% endif %}">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"/></svg>
-        Dashboard
-      </a>
-      <a href="/cves"      class="nav-link {% if active=='cves' %}active{% endif %}">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg>
-        CVEs
-      </a>
-      <a href="/plugins"   class="nav-link {% if active=='plugins' %}active{% endif %}">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
-        Plugins
-      </a>
-      <a href="/services"  class="nav-link {% if active=='services' %}active{% endif %}">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2"/></svg>
-        Services
-      </a>
-      <a href="/iocs"      class="nav-link {% if active=='iocs' %}active{% endif %}">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
-        IOCs
-      </a>
-      <a href="/stix"      class="nav-link {% if active=='stix' %}active{% endif %}">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-        STIX
-      </a>
-      <a href="/network"   class="nav-link {% if active=='network' %}active{% endif %}">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9"/></svg>
-        Network
-      </a>
-      <a href="/config"    class="nav-link {% if active=='config' %}active{% endif %}">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-        Config
-      </a>
-    </nav>
+    </div>
   </div>
 </header>
-<main class="max-w-[1600px] mx-auto px-6 py-8">
+
+<!-- Main content -->
+<main class="max-w-[1400px] mx-auto px-6 py-8">
   {% block content %}{% endblock %}
 </main>
-<footer class="border-t border-[#1e293b] mt-12 py-4">
-  <div class="max-w-[1600px] mx-auto px-6 flex items-center justify-between text-xs text-slate-600">
-    <span>HoneyForge Intel · Threat Intelligence Platform</span>
-    <span class="font-mono">TAXII 2.1: /taxii2/ · Pipeline: auto_kev</span>
+
+<!-- Footer -->
+<footer class="mt-16 border-t border-cream-200">
+  <div class="max-w-[1400px] mx-auto px-6 py-6 flex items-center justify-between text-xs text-ink-400">
+    <span class="font-serif italic">Honeypot-derived threat intelligence</span>
+    <span class="font-mono">TAXII 2.1 · STIX · auto-pipeline</span>
   </div>
 </footer>
+
 </body>
 </html>

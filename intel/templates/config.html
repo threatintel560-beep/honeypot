@@ -1,12 +1,12 @@
 {% extends "base.html" %}
-{% block title %}Config · HoneyForge Intel{% endblock %}
+{% block title %}Config · HoneyForge{% endblock %}
 {% block content %}
 <div class="space-y-6">
 
-  <div class="flex items-center justify-between">
+  <div class="flex items-end justify-between">
     <div>
-      <h1 class="text-2xl font-bold text-white">Configuration</h1>
-      <p class="text-sm text-slate-500 mt-1">LLM backend, CVE watcher, pipeline settings</p>
+      <h1 class="font-serif text-3xl text-ink-900">Configuration</h1>
+      <p class="text-sm text-ink-500 mt-1">LLM backend, CVE watcher, pipeline, and TAXII settings</p>
     </div>
     {% if request.query_params.get('saved') %}
       <span class="chip chip-deployed">✓ Saved</span>
@@ -16,154 +16,134 @@
   <form method="post" action="/config" class="space-y-6">
 
     <!-- LLM Backend -->
-    <div class="card space-y-4">
-      <div class="flex items-center justify-between">
-        <h2 class="text-lg font-semibold text-white flex items-center gap-2">
-          <span class="text-lg">🤖</span> Local LLM Backend
-        </h2>
-        <div class="flex gap-2">
+    <div class="card">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <div class="section-title mb-0">Local LLM Backend</div>
+          <p class="text-xs text-ink-500 mt-1">Powers AI-based plugin generation</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <span id="llm-test-result" class="text-sm"></span>
           <button class="btn" type="button" onclick="testLLM()">Test Connection</button>
-          <span id="llm-test-result" class="text-sm self-center"></span>
         </div>
       </div>
 
       <div class="grid md:grid-cols-2 gap-4">
         <div>
-          <label for="llm_mode">Mode</label>
-          <select name="llm_mode" id="llm_mode" class="w-full">
+          <label>Mode</label>
+          <select name="llm_mode">
             {% for m in ['ollama','openai','template'] %}
               <option value="{{ m }}" {% if cfg.llm_mode==m %}selected{% endif %}>{{ m }}</option>
             {% endfor %}
           </select>
-          <p class="hint">ollama = local LLM (recommended) · template = no AI, skeleton only</p>
+          <p class="hint"><strong>ollama</strong> = local LLM (recommended) · <strong>template</strong> = no AI, skeleton only</p>
         </div>
         <div>
-          <label for="llm_model">Model</label>
-          <input name="llm_model" id="llm_model" value="{{ cfg.llm_model }}" class="w-full" placeholder="qwen2.5-coder:3b">
-          <p class="hint">For 8GB Mac: <code class="text-cyan-400">qwen2.5-coder:3b</code> · 16GB: <code class="text-cyan-400">qwen2.5-coder:7b</code></p>
+          <label>Model</label>
+          <input name="llm_model" value="{{ cfg.llm_model }}" placeholder="qwen2.5-coder:3b">
+          <p class="hint">8GB Mac: <code>qwen2.5-coder:3b</code> · 16GB: <code>qwen2.5-coder:7b</code></p>
         </div>
         <div>
-          <label for="llm_ollama_host">Ollama Host URL</label>
-          <input name="llm_ollama_host" id="llm_ollama_host" value="{{ cfg.llm_ollama_host }}" class="w-full" placeholder="http://host.docker.internal:11434">
-          <p class="hint">Docker Desktop: <code class="text-cyan-400">http://host.docker.internal:11434</code></p>
+          <label>Ollama Host URL</label>
+          <input name="llm_ollama_host" value="{{ cfg.llm_ollama_host }}" placeholder="http://host.docker.internal:11434">
+          <p class="hint">Docker Desktop: <code>http://host.docker.internal:11434</code></p>
         </div>
         <div>
-          <label for="llm_openai_key">OpenAI / Compatible API Key</label>
-          <input type="password" name="llm_openai_key" id="llm_openai_key" value="{{ cfg.llm_openai_key }}" class="w-full" placeholder="sk-...">
-          <p class="hint">Only needed for openai mode. Works with any OpenAI-compatible API.</p>
+          <label>OpenAI-compatible API Key</label>
+          <input type="password" name="llm_openai_key" value="{{ cfg.llm_openai_key }}" placeholder="sk-...">
+          <p class="hint">Only needed when mode is "openai"</p>
         </div>
       </div>
 
-      <!-- Local LLM Setup Guide -->
-      <details class="mt-2">
-        <summary class="cursor-pointer text-sm text-cyan-400 hover:text-cyan-300 font-medium">
-          📖 How to set up local LLM (Ollama on Mac)
+      <details class="mt-4">
+        <summary class="text-sm text-coral-500 font-medium hover:text-coral-600 inline-flex items-center gap-1">
+          <span class="arrow">▸</span> How to set up Ollama locally
         </summary>
-        <div class="mt-3 terminal">
-          <div class="terminal-header flex items-center justify-between">
-            <div class="terminal-dots"><span class="red"></span><span class="yellow"></span><span class="green"></span></div>
-            <span class="text-xs text-slate-500 font-mono">ollama-setup.sh</span>
+        <div class="terminal mt-3">
+          <div class="terminal-header">
+            <div class="terminal-dots"><span></span><span></span><span></span></div>
+            <span class="text-xs text-ink-400 font-mono">ollama-setup.sh</span>
           </div>
-          <div class="p-4 text-xs font-mono text-slate-400 space-y-1.5">
-            <p class="text-emerald-400"># Step 1: Install Ollama</p>
-            <p><span class="text-cyan-400">$</span> brew install ollama</p>
-            <p></p>
-            <p class="text-emerald-400"># Step 2: Start Ollama server</p>
-            <p><span class="text-cyan-400">$</span> ollama serve &</p>
-            <p></p>
-            <p class="text-emerald-400"># Step 3: Pull a coding model</p>
-            <p class="text-amber-400"># Pick based on your RAM:</p>
-            <p><span class="text-cyan-400">$</span> ollama pull qwen2.5-coder:1.5b  <span class="text-slate-600"># 8GB Mac (fastest)</span></p>
-            <p><span class="text-cyan-400">$</span> ollama pull qwen2.5-coder:3b    <span class="text-slate-600"># 8GB Mac (best balance)</span></p>
-            <p><span class="text-cyan-400">$</span> ollama pull qwen2.5-coder:7b    <span class="text-slate-600"># 16GB Mac</span></p>
-            <p><span class="text-cyan-400">$</span> ollama pull qwen2.5-coder:14b   <span class="text-slate-600"># 32GB Mac</span></p>
-            <p></p>
-            <p class="text-emerald-400"># Step 4: Verify it works</p>
-            <p><span class="text-cyan-400">$</span> curl http://localhost:11434/api/tags</p>
-            <p></p>
-            <p class="text-emerald-400"># Step 5: Set config above</p>
-            <p class="text-slate-500"># Mode: ollama</p>
-            <p class="text-slate-500"># Model: qwen2.5-coder:3b</p>
-            <p class="text-slate-500"># Host: http://host.docker.internal:11434</p>
-            <p></p>
-            <p class="text-amber-400"># Note: Ollama runs on your Mac host.</p>
-            <p class="text-amber-400"># Docker containers reach it via host.docker.internal</p>
-            <p class="text-amber-400"># No need to pull every reboot — models persist on disk.</p>
+          <div class="terminal-body">
+            <div><span class="comment"># Step 1: Install</span></div>
+            <div><span class="prompt">$</span> brew install ollama</div>
+            <div class="mt-2"><span class="comment"># Step 2: Start server</span></div>
+            <div><span class="prompt">$</span> ollama serve &</div>
+            <div class="mt-2"><span class="comment"># Step 3: Pull a coding model</span></div>
+            <div><span class="prompt">$</span> ollama pull qwen2.5-coder:1.5b  <span class="comment"># 8GB Mac fast</span></div>
+            <div><span class="prompt">$</span> ollama pull qwen2.5-coder:3b    <span class="comment"># 8GB balanced</span></div>
+            <div><span class="prompt">$</span> ollama pull qwen2.5-coder:7b    <span class="comment"># 16GB Mac</span></div>
+            <div class="mt-2"><span class="comment"># Step 4: Verify</span></div>
+            <div><span class="prompt">$</span> curl http://localhost:11434/api/tags</div>
+            <div class="mt-2"><span class="comment"># Models persist on disk — no need to re-pull after reboot</span></div>
           </div>
         </div>
       </details>
     </div>
 
     <!-- Auto Pipeline -->
-    <div class="card space-y-4">
-      <h2 class="text-lg font-semibold text-white flex items-center gap-2">
-        <span class="text-lg">⚡</span> Auto-Pipeline
-      </h2>
+    <div class="card">
+      <div class="section-title">Auto-Pipeline</div>
       <div class="grid md:grid-cols-2 gap-4">
         <div>
-          <label for="auto_deploy_mode">Auto-Deploy Mode</label>
-          <select name="auto_deploy_mode" id="auto_deploy_mode" class="w-full">
-            <option value="manual" {% if cfg.get('auto_deploy_mode')=='manual' %}selected{% endif %}>manual — review all plugins before deploy</option>
-            <option value="auto_kev" {% if cfg.get('auto_deploy_mode','auto_kev')=='auto_kev' %}selected{% endif %}>auto_kev — auto-deploy for CISA KEV CVEs only</option>
-            <option value="auto_all" {% if cfg.get('auto_deploy_mode')=='auto_all' %}selected{% endif %}>auto_all — auto-deploy all generated plugins</option>
+          <label>Deploy Mode</label>
+          <select name="auto_deploy_mode">
+            <option value="manual" {% if cfg.get('auto_deploy_mode')=='manual' %}selected{% endif %}>manual — review before deploy</option>
+            <option value="auto_kev" {% if cfg.get('auto_deploy_mode','auto_kev')=='auto_kev' %}selected{% endif %}>auto_kev — KEV CVEs only (recommended)</option>
+            <option value="auto_all" {% if cfg.get('auto_deploy_mode')=='auto_all' %}selected{% endif %}>auto_all — deploy all (aggressive)</option>
           </select>
-          <p class="hint">auto_kev recommended: only auto-deploys plugins for CVEs actively exploited in the wild.</p>
+          <p class="hint"><strong>auto_kev</strong> only deploys plugins for CVEs actively exploited in the wild</p>
         </div>
         <div>
-          <label for="taxii_api_key">TAXII API Key</label>
-          <input name="taxii_api_key" id="taxii_api_key" value="{{ cfg.get('taxii_api_key', '') }}" class="w-full" placeholder="(empty = no auth)">
-          <p class="hint">Consumers pass this via <code class="text-cyan-400">X-TAXII-Key</code> header. Leave empty for open access.</p>
+          <label>TAXII API Key</label>
+          <input name="taxii_api_key" value="{{ cfg.get('taxii_api_key', '') }}" placeholder="(empty = no auth)">
+          <p class="hint">Consumers pass via <code>X-TAXII-Key</code> header</p>
         </div>
       </div>
     </div>
 
     <!-- CVE Watcher -->
-    <div class="card space-y-4">
-      <h2 class="text-lg font-semibold text-white flex items-center gap-2">
-        <span class="text-lg">🔍</span> CVE Watcher
-      </h2>
-      <div class="grid md:grid-cols-2 gap-4">
+    <div class="card">
+      <div class="section-title">CVE Watcher</div>
+      <div class="grid md:grid-cols-2 gap-4 mb-4">
         <div>
-          <label for="cve_min_cvss">Minimum CVSS (non-KEV)</label>
-          <input name="cve_min_cvss" id="cve_min_cvss" value="{{ cfg.cve_min_cvss }}" class="w-full" placeholder="7.0">
-          <p class="hint">CVEs below this score are ignored unless they're in CISA KEV.</p>
+          <label>Minimum CVSS (non-KEV)</label>
+          <input name="cve_min_cvss" value="{{ cfg.cve_min_cvss }}" placeholder="7.0">
+          <p class="hint">NVD CVEs below this score are ignored unless in KEV</p>
         </div>
         <div>
-          <label for="cve_only_kev">Only KEV</label>
-          <select name="cve_only_kev" id="cve_only_kev" class="w-full">
+          <label>Only KEV</label>
+          <select name="cve_only_kev">
             <option value="false" {% if cfg.cve_only_kev=='false' %}selected{% endif %}>No — also track NVD high/critical</option>
             <option value="true"  {% if cfg.cve_only_kev=='true'  %}selected{% endif %}>Yes — only actively exploited CVEs</option>
           </select>
-          <p class="hint">KEV = CISA Known Exploited Vulnerabilities (confirmed in-the-wild exploitation).</p>
+          <p class="hint">CISA KEV = confirmed in-the-wild exploitation</p>
         </div>
       </div>
       <div>
-        <label for="cve_watch_products">Watched Products <span class="text-slate-600">(one per line)</span></label>
-        <textarea name="cve_watch_products" id="cve_watch_products" rows="8" class="w-full font-mono text-xs">{{ products_list | join('\n') }}</textarea>
-        <p class="hint">A CVE is tracked if any of these strings appears in its vendor, product, or description (case-insensitive).</p>
+        <label>Watched Products <span class="text-ink-400 font-normal">(one per line)</span></label>
+        <textarea name="cve_watch_products" rows="8" class="font-mono text-xs">{{ products_list | join('\n') }}</textarea>
+        <p class="hint">CVE is tracked if any of these strings appears in vendor, product, or description (case-insensitive)</p>
       </div>
     </div>
 
     <!-- Elasticsearch -->
-    <div class="card space-y-4">
-      <h2 class="text-lg font-semibold text-white flex items-center gap-2">
-        <span class="text-lg">📊</span> Elasticsearch
-      </h2>
+    <div class="card">
+      <div class="section-title">Elasticsearch</div>
       <div class="grid md:grid-cols-2 gap-4">
         <div>
-          <label for="es_url">URL</label>
-          <input name="es_url" id="es_url" value="{{ cfg.es_url }}" class="w-full" placeholder="http://elasticsearch:9200">
+          <label>URL</label>
+          <input name="es_url" value="{{ cfg.es_url }}" placeholder="http://elasticsearch:9200">
         </div>
         <div>
-          <label for="es_index">Index Pattern</label>
-          <input name="es_index" id="es_index" value="{{ cfg.es_index }}" class="w-full" placeholder="honeypot-events-*">
+          <label>Index Pattern</label>
+          <input name="es_index" value="{{ cfg.es_index }}" placeholder="honeypot-events-*">
         </div>
       </div>
     </div>
 
-    <!-- Save -->
     <div class="flex justify-end">
-      <button class="btn-primary" type="submit">💾 Save All Settings</button>
+      <button class="btn-primary" type="submit">Save Settings</button>
     </div>
   </form>
 
@@ -173,15 +153,15 @@
 async function testLLM() {
   const el = document.getElementById('llm-test-result');
   el.textContent = 'Testing…';
-  el.className = 'text-sm self-center text-slate-400';
+  el.className = 'text-sm text-ink-500';
   try {
     const r = await fetch('/config/llm-test', {method:'POST'});
     const j = await r.json();
     el.textContent = `[${j.backend}] ${j.message}`;
-    el.className = 'text-sm self-center ' + (j.ok ? 'text-emerald-400' : 'text-red-400');
+    el.className = 'text-sm ' + (j.ok ? 'text-green-600' : 'text-red-600');
   } catch(e) {
     el.textContent = 'Error: ' + e;
-    el.className = 'text-sm self-center text-red-400';
+    el.className = 'text-sm text-red-600';
   }
 }
 </script>

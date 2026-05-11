@@ -1,115 +1,116 @@
 {% extends "base.html" %}
-{% block title %}CVEs · HoneyForge Intel{% endblock %}
+{% block title %}CVEs · HoneyForge{% endblock %}
 {% block content %}
 <div class="space-y-6">
 
-  <div class="flex items-center justify-between">
+  <!-- Header -->
+  <div class="flex items-end justify-between">
     <div>
-      <h1 class="text-2xl font-bold text-white">CVE Tracker</h1>
-      <p class="text-sm text-slate-500 mt-1">Vulnerabilities from CISA KEV + NVD feeds</p>
+      <h1 class="font-serif text-3xl text-ink-900">CVE Tracker</h1>
+      <p class="text-sm text-ink-500 mt-1">Vulnerabilities discovered from CISA KEV + NVD feeds</p>
     </div>
     <div class="flex gap-2">
-      <form method="post" action="/cves/rebuild" onsubmit="return confirm('This will clear all CVE data and re-fetch from feeds. Continue?');">
-        <button class="btn-danger">🗑 Rebuild Fresh</button>
+      <form method="post" action="/cves/rebuild" onsubmit="return confirm('Clear all CVE data and re-fetch from feeds?');">
+        <button class="btn-danger">Rebuild Fresh</button>
       </form>
       <form method="post" action="/cves/watch-now">
-        <button class="btn-primary">🔍 Poll Feeds Now</button>
+        <button class="btn-primary">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+          Poll Feeds
+        </button>
       </form>
     </div>
   </div>
 
   <!-- Filters -->
-  <form class="card flex flex-wrap gap-4 items-end" method="get">
-    <div>
-      <label>Status</label>
-      <select name="status" class="w-full">
-        <option value="">All statuses</option>
-        {% for s in ['new','researched','plugin_drafted','deployed','skipped'] %}
-          <option value="{{ s }}" {% if status_filter==s %}selected{% endif %}>{{ s }}</option>
-        {% endfor %}
-      </select>
-    </div>
-    <div>
-      <label>KEV only</label>
-      <select name="kev_only" class="w-full">
-        <option value="">All sources</option>
-        <option value="1" {% if kev_only=='1' %}selected{% endif %}>KEV only (actively exploited)</option>
-      </select>
-    </div>
-    <button class="btn">Apply Filter</button>
-  </form>
+  <div class="card-quiet">
+    <form class="flex flex-wrap gap-4 items-end" method="get">
+      <div class="flex-1 min-w-[200px]">
+        <label>Status</label>
+        <select name="status">
+          <option value="">All statuses</option>
+          {% for s in ['new','researched','plugin_drafted','deployed','skipped'] %}
+            <option value="{{ s }}" {% if status_filter==s %}selected{% endif %}>{{ s }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="flex-1 min-w-[200px]">
+        <label>Source</label>
+        <select name="kev_only">
+          <option value="">All sources</option>
+          <option value="1" {% if kev_only=='1' %}selected{% endif %}>KEV only (actively exploited)</option>
+        </select>
+      </div>
+      <button class="btn">Apply</button>
+    </form>
+  </div>
 
-  <!-- Status legend -->
-  <div class="flex flex-wrap gap-3 text-xs">
-    <span class="text-slate-500">Status meaning:</span>
-    <span class="chip chip-new">new</span><span class="text-slate-500">= just discovered</span>
-    <span class="chip chip-researched">researched</span><span class="text-slate-500">= reviewed by operator</span>
-    <span class="chip chip-plugin">plugin_drafted</span><span class="text-slate-500">= honeypot plugin generated</span>
-    <span class="chip chip-deployed">deployed</span><span class="text-slate-500">= plugin active on honeypot, catching attacks</span>
-    <span class="chip chip-skipped">skipped</span><span class="text-slate-500">= not relevant</span>
+  <!-- Legend -->
+  <div class="flex flex-wrap gap-3 items-center text-xs text-ink-500">
+    <span class="font-medium">Status:</span>
+    <span class="chip chip-new">new</span><span>just discovered</span>
+    <span class="chip chip-researched">researched</span><span>reviewed</span>
+    <span class="chip chip-plugin">plugin_drafted</span><span>plugin generated</span>
+    <span class="chip chip-deployed">deployed</span><span>catching attacks</span>
+    <span class="chip chip-skipped">skipped</span><span>not relevant</span>
   </div>
 
   <!-- Table -->
-  <div class="card overflow-x-auto">
-    <table class="data">
-      <thead>
-        <tr>
-          <th>CVE</th>
-          <th>Product</th>
-          <th>Severity</th>
-          <th>CVSS</th>
-          <th>Source</th>
-          <th>Published</th>
-          <th>Status</th>
-          <th class="max-w-xs">Description</th>
-        </tr>
-      </thead>
-      <tbody>
-      {% for c in rows %}
-        <tr>
-          <td><a class="link font-mono text-xs" href="/cves/{{ c.cve_id }}">{{ c.cve_id }}</a></td>
-          <td class="text-slate-300 text-xs whitespace-nowrap">{{ c.product or c.vendor or '—' }}</td>
-          <td>
-            <span class="chip chip-{{ c.severity or 'low' }}">{{ c.severity or 'n/a' }}</span>
-          </td>
-          <td class="font-mono text-xs text-slate-300">{{ c.cvss or '—' }}</td>
-          <td>
-            {% if c.in_kev %}
-              <span class="chip chip-kev" title="CISA Known Exploited Vulnerabilities — confirmed in-the-wild exploitation">KEV</span>
-            {% else %}
-              <span class="text-xs text-slate-500" title="National Vulnerability Database">NVD</span>
-            {% endif %}
-          </td>
-          <td class="text-xs text-slate-500 whitespace-nowrap">
-            {% if c.in_kev and c.kev_date %}
-              {{ c.kev_date }}
-            {% elif c.nvd_published %}
-              {{ c.nvd_published[:10] }}
-            {% else %}
-              —
-            {% endif %}
-          </td>
-          <td><span class="chip chip-{{ c.status.split('_')[0] if c.status else 'new' }}">{{ c.status or 'new' }}</span></td>
-          <td class="text-slate-500 text-xs max-w-xs truncate">{{ (c.description or '')[:100] }}</td>
-        </tr>
-      {% else %}
-        <tr><td colspan="8" class="text-slate-600 text-center py-8">
-          No CVEs match. Click <span class="text-cyan-400">Poll Feeds Now</span> to fetch from CISA KEV + NVD.
-        </td></tr>
-      {% endfor %}
-      </tbody>
-    </table>
+  <div class="card p-0 overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="data">
+        <thead>
+          <tr>
+            <th>CVE</th>
+            <th>Product</th>
+            <th>Severity</th>
+            <th>CVSS</th>
+            <th>Source</th>
+            <th>Published</th>
+            <th>Status</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for c in rows %}
+          <tr>
+            <td><a class="link font-mono text-xs" href="/cves/{{ c.cve_id }}">{{ c.cve_id }}</a></td>
+            <td class="whitespace-nowrap">{{ c.product or c.vendor or '—' }}</td>
+            <td><span class="chip chip-{{ c.severity or 'low' }}">{{ c.severity or 'n/a' }}</span></td>
+            <td class="font-mono text-xs text-ink-700">{{ c.cvss or '—' }}</td>
+            <td>
+              {% if c.in_kev %}
+                <span class="chip chip-kev">KEV</span>
+              {% else %}
+                <span class="text-xs text-ink-500">NVD</span>
+              {% endif %}
+            </td>
+            <td class="text-xs text-ink-500 whitespace-nowrap">
+              {% if c.in_kev and c.kev_date %}{{ c.kev_date }}
+              {% elif c.nvd_published %}{{ c.nvd_published[:10] }}
+              {% else %}—{% endif %}
+            </td>
+            <td><span class="chip chip-{{ c.status.split('_')[0] if c.status else 'new' }}">{{ c.status or 'new' }}</span></td>
+            <td class="text-xs text-ink-500 max-w-md truncate">{{ (c.description or '')[:120] }}</td>
+          </tr>
+        {% else %}
+          <tr><td colspan="8" class="text-center py-12 text-ink-400">
+            <div class="font-serif italic text-lg">No CVEs match these filters</div>
+            <div class="text-sm mt-2">Click <span class="text-coral-500 font-medium">Poll Feeds</span> to fetch from CISA KEV + NVD</div>
+          </td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
   </div>
 
   <!-- Info box -->
-  <div class="card bg-[#0d1117]">
-    <h3 class="text-sm font-semibold text-slate-400 mb-2">What does "deployed" mean?</h3>
-    <p class="text-xs text-slate-500 leading-relaxed">
-      When a CVE status is <span class="chip chip-deployed">deployed</span>, it means a honeypot plugin has been generated and is 
-      <strong class="text-slate-300">actively running on the HTTP honeypot (port 8080)</strong>. Attackers probing that port will see 
-      realistic responses that mimic the vulnerable service. For example, a deployed CVE-2024-4577 plugin makes the honeypot 
-      respond like a real vulnerable PHP-CGI server — tricking attackers into sending their full exploit payload, which we capture as intelligence.
-    </p>
+  <div class="notice-info">
+    <strong>What does "deployed" mean?</strong> When a CVE status shows 
+    <span class="chip chip-deployed">deployed</span>, a honeypot plugin is 
+    actively running on the honeypot. Attackers probing that port will see realistic responses
+    that mimic the vulnerable service — tricking them into sending full exploit payloads,
+    which we capture as threat intelligence.
   </div>
 
 </div>
