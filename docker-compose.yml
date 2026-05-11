@@ -40,6 +40,83 @@ services:
     security_opt:
       - no-new-privileges:true
 
+  # ──────────────── Product-specific honeypots ────────────────
+  # Each spoofs a specific product on its native port.
+  # Censys/Shodan will index these as the real product.
+  # Uncomment the ones you want to run.
+
+  fortinet-honeypot:
+    build:
+      context: .
+      dockerfile: services/http/Dockerfile
+    container_name: hp-fortinet
+    restart: unless-stopped
+    ports:
+      - "${FORTINET_PORT:-10443}:8080"
+    env_file: .env
+    environment:
+      - HONEYPOT_PRODUCT=fortinet
+      - HTTP_LISTEN_PORT=8080
+      - HONEY_DEPLOYMENT_ID=hp-fortinet-01
+    volumes:
+      - ./logs/http:/var/log/honeypot
+      - ./services/http/plugins:/app/plugins:ro
+    networks:
+      - honeynet
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    profiles: ["products"]
+
+  paloalto-honeypot:
+    build:
+      context: .
+      dockerfile: services/http/Dockerfile
+    container_name: hp-paloalto
+    restart: unless-stopped
+    ports:
+      - "${PALOALTO_PORT:-4443}:8080"
+    env_file: .env
+    environment:
+      - HONEYPOT_PRODUCT=paloalto
+      - HTTP_LISTEN_PORT=8080
+      - HONEY_DEPLOYMENT_ID=hp-paloalto-01
+    volumes:
+      - ./logs/http:/var/log/honeypot
+      - ./services/http/plugins:/app/plugins:ro
+    networks:
+      - honeynet
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    profiles: ["products"]
+
+  citrix-honeypot:
+    build:
+      context: .
+      dockerfile: services/http/Dockerfile
+    container_name: hp-citrix
+    restart: unless-stopped
+    ports:
+      - "${CITRIX_PORT:-8443}:8080"
+    env_file: .env
+    environment:
+      - HONEYPOT_PRODUCT=citrix
+      - HTTP_LISTEN_PORT=8080
+      - HONEY_DEPLOYMENT_ID=hp-citrix-01
+    volumes:
+      - ./logs/http:/var/log/honeypot
+      - ./services/http/plugins:/app/plugins:ro
+    networks:
+      - honeynet
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    profiles: ["products"]
+
   # ──────────────── Logging pipeline ────────────────
   filebeat:
     image: docker.elastic.co/beats/filebeat:${ELASTIC_VERSION:-8.13.4}

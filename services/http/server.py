@@ -21,10 +21,15 @@ from fastapi.responses import HTMLResponse, PlainTextResponse
 from honeycore import Deception, PluginRegistry, Session, get_logger
 from honeycore.plugins import PluginContext
 from service.scanner_profiles import detect_scanner, get_default_page, SCANNER_PATHS
+from service.product_profiles import get_active_profile
 
 LOG = get_logger("http")
 DECEPTION = Deception.from_env()
 REGISTRY = PluginRegistry(LOG)
+PRODUCT = get_active_profile()  # None = generic, or a specific product spoof
+
+if PRODUCT:
+    LOG.info("product_profile_active", extra={"data": {"product": PRODUCT.name}})
 
 PLUGIN_DIR = Path(os.getenv("HTTP_PLUGIN_DIR", "/app/plugins"))
 loaded = REGISTRY.load_from_dir(PLUGIN_DIR)
@@ -73,6 +78,15 @@ async def catch_all(request: Request, call_next):
 
     # Serve realistic responses for common scanner probe paths
     path_lower = str(request.url.path).lower()
+
+    # Product-specific paths take priority
+    if PRODUCT and request.url.path in PRODUCT.paths:
+        status, ctype, content = PRODUCT.paths[request.url.path]
+        from fastapi.responses import Response as RawResponse
+        resp = RawResponse(content=content, status_code=status,
+                           media_type=ctype)
+        return _decorate(resp)
+
     if path_lower in SCANNER_PATHS:
         status, ctype, content = SCANNER_PATHS[path_lower]
         from fastapi.responses import Response as RawResponse
@@ -115,12 +129,28 @@ async def catch_all(request: Request, call_next):
 
 def _decorate(resp: Response) -> Response:
     """Stamp deception headers on every outgoing response."""
-    resp.headers["Server"] = DECEPTION.http_server
-    resp.headers.setdefault("X-Powered-By", "PHP/8.1.2-1ubuntu2.14")
+    if PRODUCT:
+        # Product-specific spoofing
+        if PRODUCT.server_header:
+            resp.headers["Server"] = PRODUCT.server_header
+        else:
+            resp.headers.pop("Server", None)
+        for k, v in PRODUCT.extra_headers.items():
+            resp.headers.setdefault(k, v)
+        # Remove generic headers that would give us away
+        resp.headers.pop("X-Powered-By", None)
+    else:
+        resp.headers["Server"] = DECEPTION.http_server
+        resp.headers.setdefault("X-Powered-By", "PHP/8.1.2-1ubuntu2.14")
     return resp
 
 
 def _default_page(_: Request) -> HTMLResponse:
+    if PRODUCT:
+        return HTMLResponse(
+            content=PRODUCT.default_page,
+            status_code=PRODUCT.status_code,
+        )
     body = get_default_page(DECEPTION.http_server)
     return HTMLResponse(content=body, status_code=200)
 

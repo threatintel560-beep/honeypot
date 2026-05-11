@@ -19,6 +19,15 @@ down:
 rebuild:
 	$(COMPOSE) up -d --build --force-recreate
 
+rebuild-products:
+	$(COMPOSE) --profile products up -d --build --force-recreate
+
+products-up:
+	$(COMPOSE) --profile products up -d
+
+products-down:
+	$(COMPOSE) --profile products down
+
 ps:
 	$(COMPOSE) ps
 
