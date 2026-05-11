@@ -23,6 +23,7 @@ import logging
 import re
 from pathlib import Path
 
+import httpx
 from apscheduler.schedulers.background import BackgroundScheduler
 from fastapi import FastAPI, Form, HTTPException, Request
 from fastapi.responses import (HTMLResponse, JSONResponse, PlainTextResponse,
@@ -298,6 +299,110 @@ def pipeline_status():
 def pipeline_run_now():
     result = run_full_cycle()
     return JSONResponse(result)
+
+
+# ═══════════════════════════════════════════════════════════════════
+#  Services — honeypot containers and deployed plugins
+# ═══════════════════════════════════════════════════════════════════
+@app.get("/services", response_class=HTMLResponse)
+def services_page(request: Request):
+    plugins = storage.list_plugins()
+    deployed = [p for p in plugins if p["status"] == "deployed"]
+    cfg = storage.all_config()
+
+    # Build plugin info for the HTTP honeypot card
+    http_plugins = []
+    for p in deployed:
+        if p.get("service", "http") == "http":
+            cve = storage.get_cve(p["cve_id"]) or {}
+            http_plugins.append({
+                "cve_id": p["cve_id"],
+                "product": cve.get("product", "Unknown"),
+                "severity": cve.get("severity", "high"),
+                "filename": p.get("filename", ""),
+            })
+
+    return templates.TemplateResponse("services.html", _ctx(
+        request,
+        active="services",
+        http_plugins=http_plugins,
+        http_server_header="Apache",
+        ssh_banner_short="8.9p1",
+        ssh_cred_count=4,
+        llm_mode=cfg.get("llm_mode", "template"),
+        auto_mode=cfg.get("auto_deploy_mode", "manual"),
+    ))
+
+
+@app.post("/services/reload-http")
+def services_reload_http():
+    import subprocess
+    try:
+        subprocess.run(["docker", "restart", "hp-http"],
+                       capture_output=True, timeout=15)
+    except Exception:
+        pass
+    return RedirectResponse("/services", status_code=303)
+
+
+# ═══════════════════════════════════════════════════════════════════
+#  Network — ngrok tunnels and exposure
+# ═══════════════════════════════════════════════════════════════════
+@app.get("/network", response_class=HTMLResponse)
+def network_page(request: Request):
+    return templates.TemplateResponse("network.html", _ctx(
+        request, active="network",
+    ))
+
+
+@app.get("/network/ngrok-status")
+def ngrok_status():
+    """Check if ngrok is running by querying its local API."""
+    try:
+        r = httpx.get("http://127.0.0.1:4040/api/tunnels", timeout=3.0)
+        if r.status_code == 200:
+            data = r.json()
+            tunnels = []
+            for t in data.get("tunnels", []):
+                tunnels.append({
+                    "name": t.get("name", ""),
+                    "public_url": t.get("public_url", ""),
+                    "port": t.get("config", {}).get("addr", "").split(":")[-1],
+                })
+            return JSONResponse({"running": True, "tunnels": tunnels})
+    except Exception:
+        pass
+    return JSONResponse({"running": False, "tunnels": []})
+
+
+@app.post("/network/ngrok-start")
+async def ngrok_start(request: Request):
+    """Start an ngrok tunnel (best-effort — may need terminal)."""
+    import subprocess
+    try:
+        body = await request.json()
+        tunnel_type = body.get("type", "honeypot")
+        port = "8080" if tunnel_type == "honeypot" else "8090"
+        subprocess.Popen(
+            ["ngrok", "http", port, "--log=stdout"],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        )
+        return JSONResponse({"ok": True, "port": port})
+    except FileNotFoundError:
+        return JSONResponse({"error": "ngrok not installed. Run: brew install ngrok"}, status_code=500)
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
+@app.post("/network/ngrok-stop")
+def ngrok_stop():
+    """Stop ngrok tunnels."""
+    import subprocess
+    try:
+        subprocess.run(["pkill", "-f", "ngrok"], capture_output=True, timeout=5)
+    except Exception:
+        pass
+    return JSONResponse({"ok": True})
 
 
 # ═══════════════════════════════════════════════════════════════════

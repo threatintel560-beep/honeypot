@@ -1,0 +1,196 @@
+{% extends "base.html" %}
+{% block title %}Network · HoneyForge Intel{% endblock %}
+{% block content %}
+<div class="space-y-6">
+
+  <div class="flex items-center justify-between">
+    <div>
+      <h1 class="text-2xl font-bold text-white">Network & Exposure</h1>
+      <p class="text-sm text-slate-500 mt-1">ngrok tunnels, public URLs, and connectivity status</p>
+    </div>
+  </div>
+
+  <!-- ngrok status -->
+  <div class="card" style="box-shadow: 0 0 20px rgba(6, 182, 212, 0.08); border-color: rgba(6, 182, 212, 0.2);">
+    <div class="flex items-center justify-between mb-4">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-lg bg-cyan-950 ring-1 ring-cyan-800/50 flex items-center justify-center text-lg">🌐</div>
+        <div>
+          <h2 class="font-semibold text-white">ngrok Tunnels</h2>
+          <p class="text-xs text-slate-500">Public exposure via ngrok — lets Censys/Shodan find you</p>
+        </div>
+      </div>
+      <div id="ngrok-status" class="inline-flex items-center gap-1.5 text-xs font-mono text-slate-500 bg-slate-800 px-2 py-1 rounded-full ring-1 ring-slate-700">
+        checking...
+      </div>
+    </div>
+
+    <div id="ngrok-tunnels" class="space-y-3 mb-4">
+      <div class="bg-[#0d1117] rounded-md p-4 text-center text-sm text-slate-500">
+        <p>Loading tunnel status...</p>
+      </div>
+    </div>
+
+    <div class="flex flex-wrap gap-3">
+      <button onclick="startTunnel('honeypot')" class="btn-primary">🚀 Expose Honeypot</button>
+      <button onclick="startTunnel('intel')" class="btn">🔗 Expose Intel/TAXII</button>
+      <button onclick="stopTunnels()" class="btn-danger">⏹ Stop All</button>
+      <button onclick="refreshStatus()" class="btn">↻ Refresh</button>
+    </div>
+  </div>
+
+  <!-- Quick setup guide -->
+  <div class="grid lg:grid-cols-2 gap-6">
+    <div class="terminal">
+      <div class="terminal-header flex items-center justify-between">
+        <div class="terminal-dots"><span class="red"></span><span class="yellow"></span><span class="green"></span></div>
+        <span class="text-xs text-slate-500 font-mono">ngrok-setup.sh</span>
+      </div>
+      <div class="p-4 text-xs font-mono text-slate-400 space-y-1.5">
+        <p class="text-emerald-400"># One-time setup</p>
+        <p><span class="text-cyan-400">$</span> brew install ngrok</p>
+        <p><span class="text-cyan-400">$</span> ngrok config add-authtoken &lt;TOKEN&gt;</p>
+        <p></p>
+        <p class="text-emerald-400"># Expose honeypot (terminal 1)</p>
+        <p><span class="text-cyan-400">$</span> make expose</p>
+        <p class="text-slate-600"># → https://abc123.ngrok-free.app</p>
+        <p></p>
+        <p class="text-emerald-400"># Expose intel/TAXII (terminal 2)</p>
+        <p><span class="text-cyan-400">$</span> make expose-intel</p>
+        <p class="text-slate-600"># → https://def456.ngrok-free.app/taxii2/</p>
+        <p></p>
+        <p class="text-amber-400"># Free plan: 1 tunnel at a time</p>
+        <p class="text-amber-400"># Paid plan: use --both for simultaneous</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 class="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">How It Works</h3>
+      <div class="space-y-3 text-sm text-slate-400">
+        <div class="flex gap-3">
+          <span class="text-cyan-400 font-mono text-xs w-4">1.</span>
+          <span>ngrok creates a public HTTPS URL pointing to your local port</span>
+        </div>
+        <div class="flex gap-3">
+          <span class="text-cyan-400 font-mono text-xs w-4">2.</span>
+          <span>Censys/Shodan scan all public IPs including ngrok endpoints</span>
+        </div>
+        <div class="flex gap-3">
+          <span class="text-cyan-400 font-mono text-xs w-4">3.</span>
+          <span>Scanners see realistic Apache/nginx — index you as a real server</span>
+        </div>
+        <div class="flex gap-3">
+          <span class="text-cyan-400 font-mono text-xs w-4">4.</span>
+          <span>Real attackers follow scanner results and send exploits</span>
+        </div>
+        <div class="flex gap-3">
+          <span class="text-cyan-400 font-mono text-xs w-4">5.</span>
+          <span>Honeypot captures payloads → IOCs extracted → STIX published</span>
+        </div>
+      </div>
+
+      <div class="mt-4 p-3 bg-amber-950/30 rounded-md ring-1 ring-amber-800/30">
+        <p class="text-xs text-amber-300">⚠️ Note: ngrok free plan URLs change on restart. For persistent exposure, use a paid plan or deploy to a cloud VM with a static IP.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAXII consumer config -->
+  <div class="card">
+    <h3 class="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">Connect Threat Intel Platforms</h3>
+    <div class="grid lg:grid-cols-3 gap-4">
+      <div class="bg-[#0d1117] rounded-md p-4">
+        <h4 class="text-sm font-medium text-white mb-2">MISP</h4>
+        <div class="text-xs font-mono text-slate-500 space-y-1">
+          <p>Sync Actions → Feeds</p>
+          <p>URL: <span class="text-cyan-400">&lt;ngrok-url&gt;/taxii2/</span></p>
+          <p>Collection: <span class="text-slate-300">honeyforge-all-intel</span></p>
+          <p>Format: STIX 2.1</p>
+        </div>
+      </div>
+      <div class="bg-[#0d1117] rounded-md p-4">
+        <h4 class="text-sm font-medium text-white mb-2">OpenCTI</h4>
+        <div class="text-xs font-mono text-slate-500 space-y-1">
+          <p>Data → Connectors → TAXII</p>
+          <p>URI: <span class="text-cyan-400">&lt;ngrok-url&gt;/taxii2/</span></p>
+          <p>Collection: <span class="text-slate-300">honeyforge-all-intel</span></p>
+          <p>Interval: 900s</p>
+        </div>
+      </div>
+      <div class="bg-[#0d1117] rounded-md p-4">
+        <h4 class="text-sm font-medium text-white mb-2">curl (test)</h4>
+        <div class="text-xs font-mono text-slate-500 space-y-1">
+          <p class="text-cyan-400">curl http://localhost:8090\</p>
+          <p class="text-cyan-400">  /taxii2/collections/\</p>
+          <p class="text-cyan-400">  honeyforge-all-intel/\</p>
+          <p class="text-cyan-400">  objects/ | jq .</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+async function refreshStatus() {
+  const statusEl = document.getElementById('ngrok-status');
+  const tunnelsEl = document.getElementById('ngrok-tunnels');
+  
+  try {
+    const r = await fetch('/network/ngrok-status');
+    const data = await r.json();
+    
+    if (data.running && data.tunnels.length > 0) {
+      statusEl.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 pulse-live"></span> active';
+      statusEl.className = 'inline-flex items-center gap-1.5 text-xs font-mono text-emerald-400 bg-emerald-900/30 px-2 py-1 rounded-full ring-1 ring-emerald-700/50';
+      
+      let html = '';
+      for (const t of data.tunnels) {
+        html += `<div class="flex items-center justify-between bg-[#0d1117] rounded-md px-4 py-3">
+          <div class="flex items-center gap-3">
+            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+            <span class="font-mono text-xs text-slate-300">${t.name}</span>
+          </div>
+          <a href="${t.public_url}" target="_blank" class="font-mono text-xs text-cyan-400 hover:text-cyan-300">${t.public_url}</a>
+          <span class="text-xs text-slate-600">→ localhost:${t.port}</span>
+        </div>`;
+      }
+      tunnelsEl.innerHTML = html;
+    } else {
+      statusEl.innerHTML = 'offline';
+      statusEl.className = 'inline-flex items-center gap-1.5 text-xs font-mono text-slate-500 bg-slate-800 px-2 py-1 rounded-full ring-1 ring-slate-700';
+      tunnelsEl.innerHTML = '<div class="bg-[#0d1117] rounded-md p-4 text-center text-sm text-slate-600"><p>No active tunnels. Click <b>Expose Honeypot</b> to start.</p></div>';
+    }
+  } catch(e) {
+    statusEl.innerHTML = 'offline';
+    statusEl.className = 'inline-flex items-center gap-1.5 text-xs font-mono text-slate-500 bg-slate-800 px-2 py-1 rounded-full ring-1 ring-slate-700';
+    tunnelsEl.innerHTML = '<div class="bg-[#0d1117] rounded-md p-4 text-center text-sm text-slate-600"><p>No active tunnels. Run <code class="text-cyan-400">make expose</code> in a terminal.</p></div>';
+  }
+}
+
+async function startTunnel(type) {
+  try {
+    const r = await fetch('/network/ngrok-start', {method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({type})});
+    const data = await r.json();
+    if (data.error) {
+      alert(data.error);
+    } else {
+      setTimeout(refreshStatus, 2000);
+    }
+  } catch(e) {
+    alert('Start tunnel from terminal: make expose');
+  }
+}
+
+async function stopTunnels() {
+  try {
+    await fetch('/network/ngrok-stop', {method: 'POST'});
+    setTimeout(refreshStatus, 1000);
+  } catch(e) {}
+}
+
+// Auto-refresh on load
+refreshStatus();
+setInterval(refreshStatus, 10000);
+</script>
+{% endblock %}

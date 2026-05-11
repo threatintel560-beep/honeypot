@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+{% block title %}Services · HoneyForge Intel{% endblock %}
+{% block content %}
+<div class="space-y-6">
+
+  <div class="flex items-center justify-between">
+    <div>
+      <h1 class="text-2xl font-bold text-white">Honeypot Services</h1>
+      <p class="text-sm text-slate-500 mt-1">Running containers, deployed plugins, and service health</p>
+    </div>
+    <div class="flex gap-2">
+      <form method="post" action="/services/reload-http">
+        <button class="btn">🔄 Reload HTTP</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Service cards -->
+  <div class="grid lg:grid-cols-2 gap-6">
+
+    <!-- HTTP Honeypot -->
+    <div class="card" style="box-shadow: 0 0 20px rgba(6, 182, 212, 0.08); border-color: rgba(6, 182, 212, 0.2);">
+      <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-lg bg-cyan-950 ring-1 ring-cyan-800/50 flex items-center justify-center">
+            <svg class="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9"/></svg>
+          </div>
+          <div>
+            <h3 class="font-semibold text-white">HTTP Honeypot</h3>
+            <p class="text-xs text-slate-500 font-mono">hp-http · FastAPI + CVE Plugins</p>
+          </div>
+        </div>
+        <span class="inline-flex items-center gap-1.5 text-xs font-mono text-emerald-400 bg-emerald-900/30 px-2 py-1 rounded-full ring-1 ring-emerald-700/50">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 pulse-live"></span>
+          running
+        </span>
+      </div>
+
+      <div class="grid grid-cols-3 gap-3 mb-4">
+        <div class="bg-[#0d1117] rounded-md p-2.5 text-center">
+          <div class="text-lg font-bold text-white font-mono">:8080</div>
+          <div class="text-[10px] text-slate-500 uppercase">Port</div>
+        </div>
+        <div class="bg-[#0d1117] rounded-md p-2.5 text-center">
+          <div class="text-lg font-bold text-cyan-400 font-mono">{{ http_plugins | length }}</div>
+          <div class="text-[10px] text-slate-500 uppercase">Plugins</div>
+        </div>
+        <div class="bg-[#0d1117] rounded-md p-2.5 text-center">
+          <div class="text-lg font-bold text-amber-300 font-mono">{{ http_server_header }}</div>
+          <div class="text-[10px] text-slate-500 uppercase">Banner</div>
+        </div>
+      </div>
+
+      <!-- Deployed plugins list -->
+      <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Deployed CVE Plugins</div>
+      <div class="space-y-1.5">
+        {% for p in http_plugins %}
+        <div class="flex items-center justify-between bg-[#0d1117] rounded-md px-3 py-2">
+          <div class="flex items-center gap-2">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+            <span class="font-mono text-xs text-slate-300">{{ p.cve_id }}</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-xs text-slate-500">{{ p.product }}</span>
+            <span class="chip chip-{{ p.severity or 'high' }}">{{ p.severity }}</span>
+          </div>
+        </div>
+        {% else %}
+        <div class="text-xs text-slate-600 font-mono py-2">No plugins deployed yet</div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- SSH Honeypot -->
+    <div class="card" style="box-shadow: 0 0 20px rgba(168, 85, 247, 0.08); border-color: rgba(168, 85, 247, 0.2);">
+      <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-lg bg-purple-950 ring-1 ring-purple-800/50 flex items-center justify-center">
+            <svg class="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+          </div>
+          <div>
+            <h3 class="font-semibold text-white">SSH Honeypot</h3>
+            <p class="text-xs text-slate-500 font-mono">hp-ssh · Paramiko + Shell Emulation</p>
+          </div>
+        </div>
+        <span class="inline-flex items-center gap-1.5 text-xs font-mono text-emerald-400 bg-emerald-900/30 px-2 py-1 rounded-full ring-1 ring-emerald-700/50">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 pulse-live"></span>
+          running
+        </span>
+      </div>
+
+      <div class="grid grid-cols-3 gap-3 mb-4">
+        <div class="bg-[#0d1117] rounded-md p-2.5 text-center">
+          <div class="text-lg font-bold text-white font-mono">:2222</div>
+          <div class="text-[10px] text-slate-500 uppercase">Port</div>
+        </div>
+        <div class="bg-[#0d1117] rounded-md p-2.5 text-center">
+          <div class="text-lg font-bold text-purple-400 font-mono">{{ ssh_banner_short }}</div>
+          <div class="text-[10px] text-slate-500 uppercase">Version</div>
+        </div>
+        <div class="bg-[#0d1117] rounded-md p-2.5 text-center">
+          <div class="text-lg font-bold text-amber-300 font-mono">{{ ssh_cred_count }}</div>
+          <div class="text-[10px] text-slate-500 uppercase">Cred Pairs</div>
+        </div>
+      </div>
+
+      <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Capabilities</div>
+      <div class="space-y-1.5">
+        <div class="flex items-center gap-2 bg-[#0d1117] rounded-md px-3 py-2">
+          <span class="w-1.5 h-1.5 rounded-full bg-purple-400"></span>
+          <span class="text-xs text-slate-300">Password brute-force capture</span>
+        </div>
+        <div class="flex items-center gap-2 bg-[#0d1117] rounded-md px-3 py-2">
+          <span class="w-1.5 h-1.5 rounded-full bg-purple-400"></span>
+          <span class="text-xs text-slate-300">Interactive shell emulation (Ubuntu 22.04)</span>
+        </div>
+        <div class="flex items-center gap-2 bg-[#0d1117] rounded-md px-3 py-2">
+          <span class="w-1.5 h-1.5 rounded-full bg-purple-400"></span>
+          <span class="text-xs text-slate-300">Dropper URL extraction (wget/curl)</span>
+        </div>
+        <div class="flex items-center gap-2 bg-[#0d1117] rounded-md px-3 py-2">
+          <span class="w-1.5 h-1.5 rounded-full bg-purple-400"></span>
+          <span class="text-xs text-slate-300">Command logging + session recording</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ELK Stack -->
+    <div class="card">
+      <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-lg bg-yellow-950 ring-1 ring-yellow-800/50 flex items-center justify-center text-lg">📊</div>
+          <div>
+            <h3 class="font-semibold text-white">ELK Stack</h3>
+            <p class="text-xs text-slate-500 font-mono">Elasticsearch + Logstash + Kibana</p>
+          </div>
+        </div>
+        <span class="inline-flex items-center gap-1.5 text-xs font-mono text-emerald-400 bg-emerald-900/30 px-2 py-1 rounded-full ring-1 ring-emerald-700/50">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 pulse-live"></span>
+          running
+        </span>
+      </div>
+      <div class="grid grid-cols-3 gap-3">
+        <div class="bg-[#0d1117] rounded-md p-2.5 text-center">
+          <div class="text-sm font-bold text-white font-mono">:9200</div>
+          <div class="text-[10px] text-slate-500">Elasticsearch</div>
+        </div>
+        <div class="bg-[#0d1117] rounded-md p-2.5 text-center">
+          <div class="text-sm font-bold text-white font-mono">:5601</div>
+          <div class="text-[10px] text-slate-500">Kibana</div>
+        </div>
+        <div class="bg-[#0d1117] rounded-md p-2.5 text-center">
+          <div class="text-sm font-bold text-white font-mono">:5044</div>
+          <div class="text-[10px] text-slate-500">Logstash</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Intel Module -->
+    <div class="card">
+      <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-lg bg-indigo-950 ring-1 ring-indigo-800/50 flex items-center justify-center text-lg">🧠</div>
+          <div>
+            <h3 class="font-semibold text-white">Intel Module</h3>
+            <p class="text-xs text-slate-500 font-mono">CVE Watcher + Plugin Gen + TAXII</p>
+          </div>
+        </div>
+        <span class="inline-flex items-center gap-1.5 text-xs font-mono text-emerald-400 bg-emerald-900/30 px-2 py-1 rounded-full ring-1 ring-emerald-700/50">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 pulse-live"></span>
+          running
+        </span>
+      </div>
+      <div class="grid grid-cols-3 gap-3">
+        <div class="bg-[#0d1117] rounded-md p-2.5 text-center">
+          <div class="text-sm font-bold text-white font-mono">:8090</div>
+          <div class="text-[10px] text-slate-500">Web UI</div>
+        </div>
+        <div class="bg-[#0d1117] rounded-md p-2.5 text-center">
+          <div class="text-sm font-bold text-cyan-400 font-mono">{{ llm_mode }}</div>
+          <div class="text-[10px] text-slate-500">LLM Backend</div>
+        </div>
+        <div class="bg-[#0d1117] rounded-md p-2.5 text-center">
+          <div class="text-sm font-bold text-amber-300 font-mono">{{ auto_mode }}</div>
+          <div class="text-[10px] text-slate-500">Deploy Mode</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

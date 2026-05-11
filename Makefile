@@ -48,7 +48,10 @@ expose:
 	@./scripts/expose_ngrok.sh
 
 expose-honeypot:
-	@./scripts/expose_ngrok.sh --honeypot-only
+	@./scripts/expose_ngrok.sh
+
+expose-intel:
+	@./scripts/expose_ngrok.sh --intel
 
 export:
 	mkdir -p exports
