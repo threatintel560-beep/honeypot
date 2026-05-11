@@ -91,9 +91,11 @@
           <div>
             <label>Target Service</label>
             <select name="service" class="w-full">
-              <option value="http" selected>HTTP honeypot (:8080)</option>
-              <option value="ssh">SSH honeypot (:2222)</option>
+              <option value="auto" selected>Auto-detect from CVE</option>
+              <option value="http">HTTP honeypot (:8080 → :80)</option>
+              <option value="ssh">SSH honeypot (:2222 → :22)</option>
             </select>
+            <p class="hint">Auto maps web CVEs to HTTP, SSH CVEs to SSH.</p>
           </div>
           <button class="btn-primary w-full justify-center">🤖 Generate with AI</button>
           <p class="hint">Uses your configured LLM. Saves as draft for review.</p>

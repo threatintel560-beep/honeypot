@@ -66,11 +66,15 @@ def run_full_cycle() -> dict[str, Any]:
                 continue
 
             try:
-                code, model = plugin_generator.generate(cve["cve_id"], service="http")
-                pid = plugin_generator.save_as_draft(cve["cve_id"], "http", code, model)
+                code, model = plugin_generator.generate(cve["cve_id"], service="auto")
+                # Detect which service this CVE targets
+                from .service_mapper import detect_service
+                target_service = detect_service(cve)
+                pid = plugin_generator.save_as_draft(cve["cve_id"], target_service, code, model)
                 storage.update_cve_status(cve["cve_id"], "plugin_drafted")
                 results["plugins_generated"] += 1
-                log.info("pipeline_plugin_generated: cve=%s model=%s", cve["cve_id"], model)
+                log.info("pipeline_plugin_generated: cve=%s service=%s model=%s",
+                         cve["cve_id"], target_service, model)
 
                 # ── Step 3: Auto-deploy if configured ──────────────
                 try:

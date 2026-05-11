@@ -20,6 +20,7 @@ import textwrap
 from pathlib import Path
 
 from . import llm, storage
+from .service_mapper import detect_service
 
 log = logging.getLogger("intel.plugin_gen")
 
@@ -148,16 +149,21 @@ class {class_name}(CVEPlugin):
 
 
 # ── public API ──────────────────────────────────────────────────────
-def generate(cve_id: str, service: str = "http") -> tuple[str, str]:
+def generate(cve_id: str, service: str = "auto") -> tuple[str, str]:
     """
     Generate plugin code for a CVE. Returns (code, model_used).
 
+    If service="auto", detects the correct service from CVE metadata.
     Raises ValueError if the CVE isn't in the intel DB.
     """
     storage.init_db()
     cve = storage.get_cve(cve_id)
     if not cve:
         raise ValueError(f"CVE not in DB: {cve_id}")
+
+    # Auto-detect service from CVE product/description
+    if service == "auto":
+        service = detect_service(cve)
 
     cfg = storage.all_config()
     backend = llm.make_backend(cfg)

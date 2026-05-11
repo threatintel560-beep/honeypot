@@ -135,15 +135,29 @@ def cve_set_status(cve_id: str, status: str = Form(...)):
 
 
 @app.post("/cves/{cve_id}/generate")
-def cve_generate_plugin(cve_id: str, service: str = Form("http")):
+def cve_generate_plugin(cve_id: str, service: str = Form("auto")):
     code, model = plugin_generator.generate(cve_id, service=service)
-    pid = plugin_generator.save_as_draft(cve_id, service, code, model)
+    # Determine actual service used (may have been auto-detected)
+    from .service_mapper import detect_service
+    cve = storage.get_cve(cve_id)
+    actual_service = service if service != "auto" else detect_service(cve or {})
+    pid = plugin_generator.save_as_draft(cve_id, actual_service, code, model)
     storage.update_cve_status(cve_id, "plugin_drafted")
     return RedirectResponse(f"/plugins/{pid}", status_code=303)
 
 
 @app.post("/cves/watch-now")
 def cve_watch_now():
+    cve_watcher.run_once()
+    return RedirectResponse("/cves", status_code=303)
+
+
+@app.post("/cves/rebuild")
+def cve_rebuild():
+    """Clear all CVE data and re-fetch from feeds."""
+    with storage.db() as c:
+        c.execute("DELETE FROM cves")
+        c.execute("DELETE FROM plugins")
     cve_watcher.run_once()
     return RedirectResponse("/cves", status_code=303)
 
