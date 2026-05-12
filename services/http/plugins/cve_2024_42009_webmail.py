@@ -1,10 +1,10 @@
 """
-CVE-2023-46604 — ActiveMQ
+CVE-2024-42009 — Webmail
 
 Auto-generated skeleton. REVIEW AND CUSTOMIZE before deploying.
 
 CVSS:        n/a
-Description: Apache ActiveMQ contains a deserialization of untrusted data vulnerability that may allow a remote attacker with network access to a broker to run shell commands by manipulating serialized class types in the OpenWire protocol to cause the broker to instantiate any class on the classpath.
+Description: RoundCube Webmail contains a cross-site scripting vulnerability. This vulnerability could allow a remote attacker to steal and send emails of a victim via a crafted e-mail message that abuses a Desanitization issue in message_body() in program/actions/mail/show.php.
 """
 from __future__ import annotations
 
@@ -17,14 +17,14 @@ from honeycore.plugins import CVEPlugin, PluginContext
 URL_RE = re.compile(r'https?://[^\s\'"<>]+')
 
 
-class ActivemqCve46604(CVEPlugin):
-    cve_id = "CVE-2023-46604"
-    product = "ActiveMQ"
+class WebmailCve42009(CVEPlugin):
+    cve_id = "CVE-2024-42009"
+    product = "Webmail"
     severity = "critical"
-    description = 'Apache ActiveMQ contains a deserialization of untrusted data vulnerability that may allow a remote attacker with network access to a broker to run shell commands by manipulating serialized class types'
+    description = 'RoundCube Webmail contains a cross-site scripting vulnerability. This vulnerability could allow a remote attacker to steal and send emails of a victim via a crafted e-mail message that abuses a Desani'
 
     def matches(self, ctx: PluginContext) -> bool:
-        # TODO: replace this with the real signature for CVE-2023-46604
+        # TODO: replace this with the real signature for CVE-2024-42009
         path    = ctx.request.get("path", "").lower()
         query   = ctx.request.get("query", "")
         headers = ctx.request.get("headers") or {}
@@ -32,7 +32,7 @@ class ActivemqCve46604(CVEPlugin):
         if isinstance(body, bytes):
             body = body.decode("utf-8", errors="replace")
 
-        product_slug = "activemq"
+        product_slug = "webmail"
         return product_slug in path or product_slug in str(headers.get("user-agent","")).lower()
 
     def handle(self, ctx: PluginContext):

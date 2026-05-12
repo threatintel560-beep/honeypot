@@ -1,10 +1,10 @@
 """
-CVE-2023-46604 — ActiveMQ
+CVE-2024-9379 — Cloud Services Appliance (CSA)
 
 Auto-generated skeleton. REVIEW AND CUSTOMIZE before deploying.
 
 CVSS:        n/a
-Description: Apache ActiveMQ contains a deserialization of untrusted data vulnerability that may allow a remote attacker with network access to a broker to run shell commands by manipulating serialized class types in the OpenWire protocol to cause the broker to instantiate any class on the classpath.
+Description: Ivanti Cloud Services Appliance (CSA) contains a SQL injection vulnerability in the admin web console in versions prior to 5.0.2, which can allow a remote attacker authenticated as administrator to run arbitrary SQL statements.
 """
 from __future__ import annotations
 
@@ -17,14 +17,14 @@ from honeycore.plugins import CVEPlugin, PluginContext
 URL_RE = re.compile(r'https?://[^\s\'"<>]+')
 
 
-class ActivemqCve46604(CVEPlugin):
-    cve_id = "CVE-2023-46604"
-    product = "ActiveMQ"
+class CloudServicesApplianceCsaCve9379(CVEPlugin):
+    cve_id = "CVE-2024-9379"
+    product = "Cloud Services Appliance (CSA)"
     severity = "critical"
-    description = 'Apache ActiveMQ contains a deserialization of untrusted data vulnerability that may allow a remote attacker with network access to a broker to run shell commands by manipulating serialized class types'
+    description = 'Ivanti Cloud Services Appliance (CSA) contains a SQL injection vulnerability in the admin web console in versions prior to 5.0.2, which can allow a remote attacker authenticated as administrator to ru'
 
     def matches(self, ctx: PluginContext) -> bool:
-        # TODO: replace this with the real signature for CVE-2023-46604
+        # TODO: replace this with the real signature for CVE-2024-9379
         path    = ctx.request.get("path", "").lower()
         query   = ctx.request.get("query", "")
         headers = ctx.request.get("headers") or {}
@@ -32,7 +32,7 @@ class ActivemqCve46604(CVEPlugin):
         if isinstance(body, bytes):
             body = body.decode("utf-8", errors="replace")
 
-        product_slug = "activemq"
+        product_slug = "cloud_services_appliance_csa"
         return product_slug in path or product_slug in str(headers.get("user-agent","")).lower()
 
     def handle(self, ctx: PluginContext):

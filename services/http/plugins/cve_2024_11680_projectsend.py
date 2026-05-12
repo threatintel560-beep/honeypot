@@ -1,10 +1,10 @@
 """
-CVE-2023-46604 — ActiveMQ
+CVE-2024-11680 — ProjectSend
 
 Auto-generated skeleton. REVIEW AND CUSTOMIZE before deploying.
 
 CVSS:        n/a
-Description: Apache ActiveMQ contains a deserialization of untrusted data vulnerability that may allow a remote attacker with network access to a broker to run shell commands by manipulating serialized class types in the OpenWire protocol to cause the broker to instantiate any class on the classpath.
+Description: ProjectSend contains an improper authentication vulnerability that allows a remote, unauthenticated attacker to enable unauthorized modification of the application's configuration via crafted HTTP requests to options.php. Successful exploitation allows attackers to create accounts, upload webshells, and embed malicious JavaScript.
 """
 from __future__ import annotations
 
@@ -17,14 +17,14 @@ from honeycore.plugins import CVEPlugin, PluginContext
 URL_RE = re.compile(r'https?://[^\s\'"<>]+')
 
 
-class ActivemqCve46604(CVEPlugin):
-    cve_id = "CVE-2023-46604"
-    product = "ActiveMQ"
+class ProjectsendCve11680(CVEPlugin):
+    cve_id = "CVE-2024-11680"
+    product = "ProjectSend"
     severity = "critical"
-    description = 'Apache ActiveMQ contains a deserialization of untrusted data vulnerability that may allow a remote attacker with network access to a broker to run shell commands by manipulating serialized class types'
+    description = "ProjectSend contains an improper authentication vulnerability that allows a remote, unauthenticated attacker to enable unauthorized modification of the application's configuration via crafted HTTP req"
 
     def matches(self, ctx: PluginContext) -> bool:
-        # TODO: replace this with the real signature for CVE-2023-46604
+        # TODO: replace this with the real signature for CVE-2024-11680
         path    = ctx.request.get("path", "").lower()
         query   = ctx.request.get("query", "")
         headers = ctx.request.get("headers") or {}
@@ -32,7 +32,7 @@ class ActivemqCve46604(CVEPlugin):
         if isinstance(body, bytes):
             body = body.decode("utf-8", errors="replace")
 
-        product_slug = "activemq"
+        product_slug = "projectsend"
         return product_slug in path or product_slug in str(headers.get("user-agent","")).lower()
 
     def handle(self, ctx: PluginContext):

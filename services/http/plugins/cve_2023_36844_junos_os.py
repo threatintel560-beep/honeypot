@@ -1,10 +1,10 @@
 """
-CVE-2023-46604 — ActiveMQ
+CVE-2023-36844 — Junos OS
 
 Auto-generated skeleton. REVIEW AND CUSTOMIZE before deploying.
 
 CVSS:        n/a
-Description: Apache ActiveMQ contains a deserialization of untrusted data vulnerability that may allow a remote attacker with network access to a broker to run shell commands by manipulating serialized class types in the OpenWire protocol to cause the broker to instantiate any class on the classpath.
+Description: Juniper Junos OS on EX Series contains a PHP external variable modification vulnerability that allows an unauthenticated, network-based attacker to control certain, important environment variables. Using a crafted request an attacker is able to modify certain PHP environment variables, leading to partial loss of integrity, which may allow chaining to other vulnerabilities.
 """
 from __future__ import annotations
 
@@ -17,14 +17,14 @@ from honeycore.plugins import CVEPlugin, PluginContext
 URL_RE = re.compile(r'https?://[^\s\'"<>]+')
 
 
-class ActivemqCve46604(CVEPlugin):
-    cve_id = "CVE-2023-46604"
-    product = "ActiveMQ"
+class JunosOsCve36844(CVEPlugin):
+    cve_id = "CVE-2023-36844"
+    product = "Junos OS"
     severity = "critical"
-    description = 'Apache ActiveMQ contains a deserialization of untrusted data vulnerability that may allow a remote attacker with network access to a broker to run shell commands by manipulating serialized class types'
+    description = 'Juniper Junos OS on EX Series contains a PHP external variable modification vulnerability that allows an unauthenticated, network-based attacker to control certain, important environment variables. Us'
 
     def matches(self, ctx: PluginContext) -> bool:
-        # TODO: replace this with the real signature for CVE-2023-46604
+        # TODO: replace this with the real signature for CVE-2023-36844
         path    = ctx.request.get("path", "").lower()
         query   = ctx.request.get("query", "")
         headers = ctx.request.get("headers") or {}
@@ -32,7 +32,7 @@ class ActivemqCve46604(CVEPlugin):
         if isinstance(body, bytes):
             body = body.decode("utf-8", errors="replace")
 
-        product_slug = "activemq"
+        product_slug = "junos_os"
         return product_slug in path or product_slug in str(headers.get("user-agent","")).lower()
 
     def handle(self, ctx: PluginContext):

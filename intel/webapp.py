@@ -33,6 +33,7 @@ from fastapi.templating import Jinja2Templates
 
 from . import cve_watcher, ioc_extractor, llm, plugin_generator, stix_builder, storage
 from .taxii_server import router as taxii_router
+from .sensor_receiver import router as sensor_router
 from .auto_pipeline import run_full_cycle, get_pipeline_status
 
 logging.basicConfig(level=logging.INFO,
@@ -45,6 +46,7 @@ templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 app = FastAPI(title="HoneyForge Intel", docs_url=None, redoc_url=None)
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 app.include_router(taxii_router)
+app.include_router(sensor_router)
 
 # ── startup: init DB + schedule background jobs ────────────────────
 scheduler = BackgroundScheduler(timezone="UTC")

@@ -64,10 +64,33 @@ CREATE TABLE IF NOT EXISTS config (
     value         TEXT
 );
 
+CREATE TABLE IF NOT EXISTS sensors (
+    sensor_id     TEXT PRIMARY KEY,
+    public_ip     TEXT,
+    services      TEXT,      -- JSON array of "service:port" strings
+    plugins       TEXT,      -- JSON array of CVE IDs loaded
+    last_seen     INTEGER,
+    event_count   INTEGER DEFAULT 0,
+    registered_at INTEGER
+);
+
+CREATE TABLE IF NOT EXISTS events (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    sensor_id     TEXT,
+    event_type    TEXT,
+    src_ip        TEXT,
+    cve           TEXT,
+    raw_json      TEXT,
+    received_at   INTEGER
+);
+
 CREATE INDEX IF NOT EXISTS idx_cves_status ON cves(status);
 CREATE INDEX IF NOT EXISTS idx_cves_kev    ON cves(in_kev);
 CREATE INDEX IF NOT EXISTS idx_iocs_type   ON iocs(ioc_type);
 CREATE INDEX IF NOT EXISTS idx_iocs_last   ON iocs(last_seen);
+CREATE INDEX IF NOT EXISTS idx_events_sensor ON events(sensor_id);
+CREATE INDEX IF NOT EXISTS idx_events_type   ON events(event_type);
+CREATE INDEX IF NOT EXISTS idx_sensors_last  ON sensors(last_seen);
 """
 
 _DEFAULT_CONFIG = {
@@ -87,6 +110,7 @@ _DEFAULT_CONFIG = {
     "es_index":            "honeypot-events-*",
     "auto_deploy_mode":    "auto_kev",      # manual | auto_kev | auto_all
     "taxii_api_key":       "",              # empty = no auth required
+    "sensor_api_key":      "",              # shared secret for remote sensors
 }
 
 
@@ -268,3 +292,98 @@ def ioc_stats() -> dict[str, int]:
     with db() as c:
         rows = c.execute("SELECT ioc_type, COUNT(*) as n FROM iocs GROUP BY ioc_type").fetchall()
         return {r["ioc_type"]: r["n"] for r in rows}
+
+
+# ── Sensor helpers ──────────────────────────────────────────────────
+def upsert_sensor(sensor_id: str, public_ip: str,
+                  services: list[str], plugins: list[str]) -> None:
+    now = int(time.time())
+    with db() as c:
+        c.execute(
+            """INSERT OR REPLACE INTO sensors
+               (sensor_id, public_ip, services, plugins, last_seen,
+                event_count, registered_at)
+               VALUES (?,?,?,?,?,
+                       COALESCE((SELECT event_count FROM sensors WHERE sensor_id=?), 0),
+                       COALESCE((SELECT registered_at FROM sensors WHERE sensor_id=?), ?))""",
+            (sensor_id, public_ip, json.dumps(services), json.dumps(plugins),
+             now, sensor_id, sensor_id, now),
+        )
+
+
+def update_sensor_heartbeat(sensor_id: str, new_events: int = 0) -> None:
+    now = int(time.time())
+    with db() as c:
+        c.execute(
+            """UPDATE sensors SET last_seen=?, event_count=event_count+?
+               WHERE sensor_id=?""",
+            (now, new_events, sensor_id),
+        )
+
+
+def list_sensors() -> list[dict]:
+    with db() as c:
+        rows = c.execute(
+            "SELECT * FROM sensors ORDER BY last_seen DESC"
+        ).fetchall()
+        result = []
+        for r in rows:
+            d = dict(r)
+            d["services_list"] = json.loads(d.get("services") or "[]")
+            d["plugins_list"] = json.loads(d.get("plugins") or "[]")
+            d["is_online"] = (int(time.time()) - (d.get("last_seen") or 0)) < 120
+            result.append(d)
+        return result
+
+
+def get_sensor(sensor_id: str) -> dict | None:
+    with db() as c:
+        row = c.execute("SELECT * FROM sensors WHERE sensor_id=?",
+                        (sensor_id,)).fetchone()
+        if row:
+            d = dict(row)
+            d["services_list"] = json.loads(d.get("services") or "[]")
+            d["plugins_list"] = json.loads(d.get("plugins") or "[]")
+            d["is_online"] = (int(time.time()) - (d.get("last_seen") or 0)) < 120
+            return d
+        return None
+
+
+# ── Event storage (lightweight — for non-ES deployments) ────────────
+def store_event(event: dict) -> None:
+    now = int(time.time())
+    with db() as c:
+        c.execute(
+            """INSERT INTO events(sensor_id, event_type, src_ip, cve, raw_json, received_at)
+               VALUES (?,?,?,?,?,?)""",
+            (event.get("deployment", "unknown"),
+             event.get("event", "unknown"),
+             event.get("src_ip", ""),
+             event.get("cve", ""),
+             json.dumps(event, default=str),
+             now),
+        )
+
+
+def list_events(sensor_id: str | None = None, event_type: str | None = None,
+                limit: int = 100) -> list[dict]:
+    q = "SELECT * FROM events WHERE 1=1"
+    params: list = []
+    if sensor_id:
+        q += " AND sensor_id=?"
+        params.append(sensor_id)
+    if event_type:
+        q += " AND event_type=?"
+        params.append(event_type)
+    q += " ORDER BY received_at DESC LIMIT ?"
+    params.append(limit)
+    with db() as c:
+        return [dict(r) for r in c.execute(q, params)]
+
+
+def event_stats() -> dict[str, int]:
+    with db() as c:
+        rows = c.execute(
+            "SELECT event_type, COUNT(*) as n FROM events GROUP BY event_type"
+        ).fetchall()
+        return {r["event_type"]: r["n"] for r in rows}
