@@ -116,3 +116,39 @@ async def heartbeat(request: Request, x_sensor_key: str | None = Header(None)):
     sensor_id = body.get("sensor_id", "unknown")
     storage.update_sensor_heartbeat(sensor_id, 0)
     return JSONResponse({"ok": True, "ts": int(time.time())})
+
+
+
+# ── Plugin assignment (for sensor plugin sync) ────────────────────
+@router.get("/{sensor_id}/plugins")
+async def get_sensor_plugins(sensor_id: str, x_sensor_key: str | None = Header(None)):
+    """Return list of plugins assigned to this sensor."""
+    await _check_sensor_key(x_sensor_key)
+    plugins = storage.list_sensor_plugins(sensor_id)
+    return JSONResponse({"plugins": plugins})
+
+
+@router.post("/{sensor_id}/assign-plugin")
+async def assign_plugin_to_sensor(sensor_id: str, request: Request,
+                                   x_sensor_key: str | None = Header(None)):
+    """Assign a plugin to a sensor (called from dashboard)."""
+    await _check_sensor_key(x_sensor_key)
+    body = await request.json()
+    plugin_id = body.get("plugin_id")
+    if not plugin_id:
+        raise HTTPException(400, "plugin_id required")
+    storage.assign_plugin_to_sensor(sensor_id, int(plugin_id))
+    return JSONResponse({"ok": True})
+
+
+@router.post("/{sensor_id}/unassign-plugin")
+async def unassign_plugin(sensor_id: str, request: Request,
+                          x_sensor_key: str | None = Header(None)):
+    """Remove plugin assignment from sensor."""
+    await _check_sensor_key(x_sensor_key)
+    body = await request.json()
+    plugin_id = body.get("plugin_id")
+    if not plugin_id:
+        raise HTTPException(400, "plugin_id required")
+    storage.unassign_plugin_from_sensor(sensor_id, int(plugin_id))
+    return JSONResponse({"ok": True})

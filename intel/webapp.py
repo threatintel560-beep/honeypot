@@ -206,6 +206,15 @@ def plugin_deploy(plugin_id: int):
     return RedirectResponse(f"/plugins/{plugin_id}?deployed={path.name}", status_code=303)
 
 
+@app.get("/api/plugins/{plugin_id}/code", response_class=PlainTextResponse)
+def plugin_code(plugin_id: int):
+    """Return plugin code — called by sensor plugin sync agents."""
+    p = storage.get_plugin(plugin_id)
+    if not p:
+        raise HTTPException(404)
+    return PlainTextResponse(p["code"], media_type="text/x-python")
+
+
 # ═══════════════════════════════════════════════════════════════════
 #  IOCs
 # ═══════════════════════════════════════════════════════════════════
@@ -322,29 +331,30 @@ def pipeline_run_now():
 # ═══════════════════════════════════════════════════════════════════
 @app.get("/services", response_class=HTMLResponse)
 def services_page(request: Request):
+    sensors = storage.list_sensors()
     plugins = storage.list_plugins()
-    deployed = [p for p in plugins if p["status"] == "deployed"]
-    cfg = storage.all_config()
 
-    # Build plugin info for the HTTP honeypot card
-    http_plugins = []
-    for p in deployed:
-        if p.get("service", "http") == "http":
+    # For local/self display, show local honeypot info
+    cfg = storage.all_config()
+    local_plugins = []
+    for p in plugins:
+        if p["status"] == "deployed":
             cve = storage.get_cve(p["cve_id"]) or {}
-            http_plugins.append({
+            local_plugins.append({
                 "cve_id": p["cve_id"],
                 "product": cve.get("product", "Unknown"),
                 "severity": cve.get("severity", "high"),
                 "filename": p.get("filename", ""),
+                "id": p["id"],
+                "service": p.get("service", "http"),
             })
 
     return templates.TemplateResponse("services.html", _ctx(
         request,
         active="services",
-        http_plugins=http_plugins,
-        http_server_header="Apache",
-        ssh_banner_short="8.9p1",
-        ssh_cred_count=4,
+        sensors=sensors,
+        local_plugins=local_plugins,
+        all_plugins=plugins,
         llm_mode=cfg.get("llm_mode", "template"),
         auto_mode=cfg.get("auto_deploy_mode", "manual"),
     ))
@@ -359,6 +369,21 @@ def services_reload_http():
     except Exception:
         pass
     return RedirectResponse("/services", status_code=303)
+
+
+# ═══════════════════════════════════════════════════════════════════
+#  Sensor plugin assignment (from dashboard)
+# ═══════════════════════════════════════════════════════════════════
+@app.post("/sensors/{sensor_id}/assign")
+async def dashboard_assign_plugin(sensor_id: str, plugin_id: int = Form(...)):
+    storage.assign_plugin_to_sensor(sensor_id, plugin_id)
+    return RedirectResponse(f"/services?sensor={sensor_id}", status_code=303)
+
+
+@app.post("/sensors/{sensor_id}/unassign")
+async def dashboard_unassign_plugin(sensor_id: str, plugin_id: int = Form(...)):
+    storage.unassign_plugin_from_sensor(sensor_id, plugin_id)
+    return RedirectResponse(f"/services?sensor={sensor_id}", status_code=303)
 
 
 # ═══════════════════════════════════════════════════════════════════

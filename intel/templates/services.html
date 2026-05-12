@@ -1,181 +1,142 @@
 {% extends "base.html" %}
-{% block title %}Services · HoneyForge{% endblock %}
+{% block title %}Sensors · HoneyForge{% endblock %}
 {% block content %}
 <div class="space-y-6">
 
   <div class="flex items-end justify-between">
     <div>
-      <h1 class="font-serif text-3xl text-ink-900">Honeypot Services</h1>
-      <p class="text-sm text-ink-500 mt-1">Running containers, deployed plugins, service health</p>
+      <h1 class="font-serif text-3xl text-ink-900">Honeypot Sensors</h1>
+      <p class="text-sm text-ink-500 mt-1">Registered sensors, their health, and plugin assignments</p>
     </div>
-    <form method="post" action="/services/reload-http">
-      <button class="btn">Reload HTTP</button>
-    </form>
   </div>
 
-  <!-- Service cards grid -->
-  <div class="grid lg:grid-cols-2 gap-6">
-
-    <!-- HTTP Honeypot -->
-    <div class="card">
-      <div class="flex items-center justify-between mb-4">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center">
-            <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9"/></svg>
-          </div>
-          <div>
-            <div class="font-medium text-ink-900">HTTP Honeypot</div>
-            <div class="text-xs text-ink-500 font-mono">hp-http · FastAPI</div>
-          </div>
-        </div>
-        <span class="inline-flex items-center gap-1.5 text-xs text-green-700">
-          <span class="status-dot pulse-live"></span>
-          running
-        </span>
+  <!-- Sensor count summary -->
+  <div class="grid grid-cols-3 gap-4">
+    <div class="stat-card">
+      <div class="text-xs text-ink-500 uppercase tracking-wider mb-2">Total Sensors</div>
+      <div class="font-serif text-3xl text-ink-900">{{ sensors | length }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="text-xs text-ink-500 uppercase tracking-wider mb-2">Online</div>
+      <div class="font-serif text-3xl text-green-600">
+        {{ sensors | selectattr('is_online') | list | length }}
       </div>
-
-      <div class="grid grid-cols-3 gap-2 mb-4">
-        <div class="card-quiet text-center">
-          <div class="font-mono text-base text-ink-900">:8080</div>
-          <div class="text-[10px] text-ink-500 uppercase tracking-wider mt-0.5">Port</div>
-        </div>
-        <div class="card-quiet text-center">
-          <div class="font-mono text-base text-coral-500">{{ http_plugins | length }}</div>
-          <div class="text-[10px] text-ink-500 uppercase tracking-wider mt-0.5">Plugins</div>
-        </div>
-        <div class="card-quiet text-center">
-          <div class="font-mono text-base text-ink-900">{{ http_server_header }}</div>
-          <div class="text-[10px] text-ink-500 uppercase tracking-wider mt-0.5">Banner</div>
-        </div>
+    </div>
+    <div class="stat-card">
+      <div class="text-xs text-ink-500 uppercase tracking-wider mb-2">Total Events</div>
+      <div class="font-serif text-3xl text-ink-900">
+        {{ sensors | sum(attribute='event_count') }}
       </div>
+    </div>
+  </div>
 
-      <div class="section-title">Deployed CVE Plugins</div>
-      <div class="space-y-1.5 max-h-80 overflow-y-auto">
-        {% for p in http_plugins %}
-        <div class="flex items-center justify-between card-quiet py-2">
-          <div class="flex items-center gap-2">
-            <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>
-            <span class="font-mono text-xs">{{ p.cve_id }}</span>
+  {% if not sensors %}
+  <div class="card text-center py-12">
+    <div class="font-serif text-2xl text-ink-400 italic mb-2">No sensors registered yet</div>
+    <p class="text-sm text-ink-500 mb-4">
+      Deploy a sensor using the slim docker-compose.sensor.yml and it will appear here automatically.
+    </p>
+    <div class="inline-block text-left terminal max-w-md">
+      <div class="terminal-header">
+        <div class="terminal-dots"><span></span><span></span><span></span></div>
+        <span class="text-xs text-ink-400 font-mono">on remote VPS</span>
+      </div>
+      <div class="terminal-body">
+        <div><span class="prompt">$</span> cd /opt/honeyforge/deploy/sensor</div>
+        <div><span class="prompt">$</span> CENTRAL_URL=https://... \</div>
+        <div>&nbsp;&nbsp;SENSOR_ID=hp-sensor-01 \</div>
+        <div>&nbsp;&nbsp;docker compose -f docker-compose.sensor.yml up -d</div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Sensor cards -->
+  {% for s in sensors %}
+  <div class="card">
+    <div class="flex items-start justify-between mb-4">
+      <div class="flex items-center gap-3">
+        {% if s.is_online %}
+          <div class="w-10 h-10 rounded-xl bg-green-50 border border-green-200 flex items-center justify-center">
+            <span class="status-dot pulse-live"></span>
           </div>
-          <div class="flex items-center gap-2">
-            <span class="text-xs text-ink-500">{{ p.product }}</span>
-            <span class="chip chip-{{ p.severity or 'high' }}">{{ p.severity }}</span>
-          </div>
-        </div>
         {% else %}
-        <div class="text-sm text-ink-400 italic py-2">No plugins deployed yet</div>
+          <div class="w-10 h-10 rounded-xl bg-ink-100 border border-ink-200 flex items-center justify-center">
+            <span class="status-dot offline"></span>
+          </div>
+        {% endif %}
+        <div>
+          <div class="font-medium text-ink-900 font-mono">{{ s.sensor_id }}</div>
+          <div class="text-xs text-ink-500 font-mono">{{ s.public_ip or 'unknown IP' }}</div>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        {% if s.is_online %}
+          <span class="chip chip-deployed">● online</span>
+        {% else %}
+          <span class="chip chip-draft">○ offline</span>
+        {% endif %}
+        <span class="text-xs text-ink-500">{{ s.event_count }} events captured</span>
+      </div>
+    </div>
+
+    <!-- Services running -->
+    {% if s.services_list %}
+    <div class="mb-4">
+      <div class="section-title">Services Running</div>
+      <div class="flex flex-wrap gap-2">
+        {% for svc in s.services_list %}
+        <span class="chip chip-new font-mono">{{ svc }}</span>
         {% endfor %}
       </div>
     </div>
+    {% endif %}
 
-    <!-- SSH Honeypot -->
-    <div class="card">
-      <div class="flex items-center justify-between mb-4">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl bg-purple-50 border border-purple-100 flex items-center justify-center">
-            <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-          </div>
-          <div>
-            <div class="font-medium text-ink-900">SSH Honeypot</div>
-            <div class="text-xs text-ink-500 font-mono">hp-ssh · Paramiko</div>
-          </div>
+    <!-- Plugin assignment -->
+    <div>
+      <div class="section-title">Deployed Plugins</div>
+      
+      {% if s.plugins_list %}
+      <div class="space-y-1.5 mb-4 max-h-60 overflow-y-auto">
+        {% for cve_id in s.plugins_list %}
+        <div class="flex items-center justify-between card-quiet py-2">
+          <span class="font-mono text-xs text-ink-700">{{ cve_id }}</span>
+          <span class="text-xs text-green-700">active</span>
         </div>
-        <span class="inline-flex items-center gap-1.5 text-xs text-green-700">
-          <span class="status-dot pulse-live"></span>
-          running
-        </span>
+        {% endfor %}
       </div>
+      {% else %}
+      <div class="text-sm text-ink-400 italic mb-4">No plugins deployed on this sensor yet</div>
+      {% endif %}
 
-      <div class="grid grid-cols-3 gap-2 mb-4">
-        <div class="card-quiet text-center">
-          <div class="font-mono text-base text-ink-900">:2222</div>
-          <div class="text-[10px] text-ink-500 uppercase tracking-wider mt-0.5">Port</div>
+      <!-- Assign a plugin -->
+      <form method="post" action="/sensors/{{ s.sensor_id }}/assign" class="flex gap-2 items-end">
+        <div class="flex-1">
+          <label class="text-xs">Assign a plugin to this sensor</label>
+          <select name="plugin_id">
+            <option value="">Choose a plugin...</option>
+            {% for p in all_plugins %}
+              {% if p.cve_id not in s.plugins_list %}
+                <option value="{{ p.id }}">{{ p.cve_id }} — {{ p.filename }}</option>
+              {% endif %}
+            {% endfor %}
+          </select>
         </div>
-        <div class="card-quiet text-center">
-          <div class="font-mono text-base text-ink-900">{{ ssh_banner_short }}</div>
-          <div class="text-[10px] text-ink-500 uppercase tracking-wider mt-0.5">Version</div>
-        </div>
-        <div class="card-quiet text-center">
-          <div class="font-mono text-base text-coral-500">{{ ssh_cred_count }}</div>
-          <div class="text-[10px] text-ink-500 uppercase tracking-wider mt-0.5">Creds</div>
-        </div>
-      </div>
-
-      <div class="section-title">Capabilities</div>
-      <ul class="space-y-1.5 text-sm text-ink-600">
-        <li class="flex items-center gap-2"><span class="w-1 h-1 rounded-full bg-purple-400"></span>Password brute-force capture</li>
-        <li class="flex items-center gap-2"><span class="w-1 h-1 rounded-full bg-purple-400"></span>Interactive shell (Ubuntu 22.04)</li>
-        <li class="flex items-center gap-2"><span class="w-1 h-1 rounded-full bg-purple-400"></span>Dropper URL extraction</li>
-        <li class="flex items-center gap-2"><span class="w-1 h-1 rounded-full bg-purple-400"></span>Session recording</li>
-      </ul>
+        <button class="btn-primary">Deploy to Sensor</button>
+      </form>
     </div>
 
-    <!-- ELK Stack -->
-    <div class="card">
-      <div class="flex items-center justify-between mb-4">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl bg-yellow-50 border border-yellow-100 flex items-center justify-center">
-            <svg class="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
-          </div>
-          <div>
-            <div class="font-medium text-ink-900">ELK Stack</div>
-            <div class="text-xs text-ink-500 font-mono">Elasticsearch · Logstash · Kibana</div>
-          </div>
-        </div>
-        <span class="inline-flex items-center gap-1.5 text-xs text-green-700">
-          <span class="status-dot pulse-live"></span>
-          running
-        </span>
-      </div>
-      <div class="grid grid-cols-3 gap-2">
-        <div class="card-quiet text-center">
-          <div class="font-mono text-sm text-ink-900">:9200</div>
-          <div class="text-[10px] text-ink-500 uppercase tracking-wider">Elastic</div>
-        </div>
-        <div class="card-quiet text-center">
-          <div class="font-mono text-sm text-ink-900">:5601</div>
-          <div class="text-[10px] text-ink-500 uppercase tracking-wider">Kibana</div>
-        </div>
-        <div class="card-quiet text-center">
-          <div class="font-mono text-sm text-ink-900">:5044</div>
-          <div class="text-[10px] text-ink-500 uppercase tracking-wider">Logstash</div>
-        </div>
-      </div>
+    <div class="mt-3 text-xs text-ink-400 font-mono">
+      Last heartbeat: {{ s.last_seen }} · Registered: {{ s.registered_at }}
     </div>
+  </div>
+  {% endfor %}
 
-    <!-- Intel Module -->
-    <div class="card">
-      <div class="flex items-center justify-between mb-4">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl bg-coral-50 border border-coral-100 flex items-center justify-center">
-            <svg class="w-5 h-5 text-coral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
-          </div>
-          <div>
-            <div class="font-medium text-ink-900">Intel Module</div>
-            <div class="text-xs text-ink-500 font-mono">CVE watcher · Plugin gen · TAXII</div>
-          </div>
-        </div>
-        <span class="inline-flex items-center gap-1.5 text-xs text-green-700">
-          <span class="status-dot pulse-live"></span>
-          running
-        </span>
-      </div>
-      <div class="grid grid-cols-3 gap-2">
-        <div class="card-quiet text-center">
-          <div class="font-mono text-sm text-ink-900">:8090</div>
-          <div class="text-[10px] text-ink-500 uppercase tracking-wider">Web UI</div>
-        </div>
-        <div class="card-quiet text-center">
-          <div class="font-mono text-sm text-coral-500">{{ llm_mode }}</div>
-          <div class="text-[10px] text-ink-500 uppercase tracking-wider">LLM</div>
-        </div>
-        <div class="card-quiet text-center">
-          <div class="font-mono text-sm text-ink-900">{{ auto_mode }}</div>
-          <div class="text-[10px] text-ink-500 uppercase tracking-wider">Mode</div>
-        </div>
-      </div>
-    </div>
-
+  <!-- Info panel about slim sensor architecture -->
+  <div class="notice-info">
+    <strong>Sensor architecture:</strong> Each sensor runs only honeypot containers + a lightweight
+    event shipper (~200MB RAM total). No ELK, no Intel, no database on sensors. All logs flow to
+    this central server via HTTPS. Plugins are pushed from here to selected sensors.
   </div>
 
 </div>

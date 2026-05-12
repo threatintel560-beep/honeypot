@@ -1,0 +1,182 @@
+# ─────────────────────────────────────────────────────────────────────
+# Slim Sensor Deployment
+#
+# Only runs honeypot services + event shipper. No ELK, no Intel, no LLM.
+# Total footprint: ~200MB RAM, <500MB disk.
+#
+# Start: docker compose -f docker-compose.sensor.yml up -d
+# ─────────────────────────────────────────────────────────────────────
+services:
+
+  # ── HTTP Honeypot (generic, default ports) ──────────────────────
+  http-honeypot:
+    build:
+      context: ../..
+      dockerfile: services/http/Dockerfile
+    container_name: hp-http
+    restart: unless-stopped
+    ports:
+      - "${HTTP_PORT:-80}:8080"
+    env_file:
+      - ../../.env
+    environment:
+      - HONEY_DEPLOYMENT_ID=${SENSOR_ID:-hp-sensor-01}
+    volumes:
+      - ./logs:/var/log/honeypot
+      - ../../services/http/plugins:/app/plugins:ro
+    networks:
+      - sensor-net
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.3'
+
+  # ── SSH Honeypot ────────────────────────────────────────────────
+  ssh-honeypot:
+    build:
+      context: ../..
+      dockerfile: services/ssh/Dockerfile
+    container_name: hp-ssh
+    restart: unless-stopped
+    ports:
+      - "${SSH_PORT:-22}:2222"
+    env_file:
+      - ../../.env
+    environment:
+      - HONEY_DEPLOYMENT_ID=${SENSOR_ID:-hp-sensor-01}
+    volumes:
+      - ./logs:/var/log/honeypot
+      - ../../services/ssh/host_key:/app/host_key
+    networks:
+      - sensor-net
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.3'
+
+  # ── Product spoof: FortiGate ────────────────────────────────────
+  fortinet-honeypot:
+    build:
+      context: ../..
+      dockerfile: services/http/Dockerfile
+    container_name: hp-fortinet
+    restart: unless-stopped
+    ports:
+      - "${FORTINET_PORT:-10443}:8080"
+    env_file:
+      - ../../.env
+    environment:
+      - HONEYPOT_PRODUCT=fortinet
+      - HONEY_DEPLOYMENT_ID=${SENSOR_ID:-hp-sensor-01}
+    volumes:
+      - ./logs:/var/log/honeypot
+      - ../../services/http/plugins:/app/plugins:ro
+    networks:
+      - sensor-net
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.3'
+
+  # ── Product spoof: Palo Alto ────────────────────────────────────
+  paloalto-honeypot:
+    build:
+      context: ../..
+      dockerfile: services/http/Dockerfile
+    container_name: hp-paloalto
+    restart: unless-stopped
+    ports:
+      - "${PALOALTO_PORT:-4443}:8080"
+    env_file:
+      - ../../.env
+    environment:
+      - HONEYPOT_PRODUCT=paloalto
+      - HONEY_DEPLOYMENT_ID=${SENSOR_ID:-hp-sensor-01}
+    volumes:
+      - ./logs:/var/log/honeypot
+      - ../../services/http/plugins:/app/plugins:ro
+    networks:
+      - sensor-net
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.3'
+
+  # ── Product spoof: Citrix ───────────────────────────────────────
+  citrix-honeypot:
+    build:
+      context: ../..
+      dockerfile: services/http/Dockerfile
+    container_name: hp-citrix
+    restart: unless-stopped
+    ports:
+      - "${CITRIX_PORT:-8443}:8080"
+    env_file:
+      - ../../.env
+    environment:
+      - HONEYPOT_PRODUCT=citrix
+      - HONEY_DEPLOYMENT_ID=${SENSOR_ID:-hp-sensor-01}
+    volumes:
+      - ./logs:/var/log/honeypot
+      - ../../services/http/plugins:/app/plugins:ro
+    networks:
+      - sensor-net
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.3'
+
+  # ── Event Shipper ──────────────────────────────────────────────
+  # Reads JSON logs, ships to central Intel over HTTPS
+  event-shipper:
+    build:
+      context: ../..
+      dockerfile: deploy/sensor/Dockerfile.shipper
+    container_name: hp-shipper
+    restart: unless-stopped
+    env_file:
+      - ../../.env
+    environment:
+      - CENTRAL_URL=${CENTRAL_URL:-}
+      - SENSOR_KEY=${SENSOR_KEY:-}
+      - SENSOR_ID=${SENSOR_ID:-hp-sensor-01}
+      - LOG_DIR=/var/log/honeypot
+    volumes:
+      - ./logs:/var/log/honeypot:ro
+      - ../../services/http/plugins:/app/plugins:ro
+    networks:
+      - sensor-net
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+          cpus: '0.1'
+    depends_on:
+      - http-honeypot
+
+networks:
+  sensor-net:
+    driver: bridge

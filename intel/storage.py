@@ -84,6 +84,14 @@ CREATE TABLE IF NOT EXISTS events (
     received_at   INTEGER
 );
 
+CREATE TABLE IF NOT EXISTS sensor_plugins (
+    sensor_id     TEXT,
+    plugin_id     INTEGER,
+    assigned_at   INTEGER,
+    PRIMARY KEY (sensor_id, plugin_id),
+    FOREIGN KEY (plugin_id) REFERENCES plugins(id)
+);
+
 CREATE INDEX IF NOT EXISTS idx_cves_status ON cves(status);
 CREATE INDEX IF NOT EXISTS idx_cves_kev    ON cves(in_kev);
 CREATE INDEX IF NOT EXISTS idx_iocs_type   ON iocs(ioc_type);
@@ -387,3 +395,52 @@ def event_stats() -> dict[str, int]:
             "SELECT event_type, COUNT(*) as n FROM events GROUP BY event_type"
         ).fetchall()
         return {r["event_type"]: r["n"] for r in rows}
+
+
+
+# ── Sensor-plugin assignments ──────────────────────────────────────
+def assign_plugin_to_sensor(sensor_id: str, plugin_id: int) -> None:
+    now = int(time.time())
+    with db() as c:
+        c.execute(
+            """INSERT OR IGNORE INTO sensor_plugins(sensor_id, plugin_id, assigned_at)
+               VALUES (?,?,?)""",
+            (sensor_id, plugin_id, now),
+        )
+
+
+def unassign_plugin_from_sensor(sensor_id: str, plugin_id: int) -> None:
+    with db() as c:
+        c.execute(
+            "DELETE FROM sensor_plugins WHERE sensor_id=? AND plugin_id=?",
+            (sensor_id, plugin_id),
+        )
+
+
+def list_sensor_plugins(sensor_id: str) -> list[dict]:
+    """Return all plugins assigned to a sensor, with full plugin data."""
+    with db() as c:
+        rows = c.execute(
+            """SELECT p.* FROM plugins p
+               JOIN sensor_plugins sp ON sp.plugin_id = p.id
+               WHERE sp.sensor_id = ?
+               ORDER BY sp.assigned_at DESC""",
+            (sensor_id,),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+
+def list_plugins_with_sensors() -> list[dict]:
+    """Return all plugins with the sensors they're assigned to."""
+    with db() as c:
+        plugins = c.execute("SELECT * FROM plugins ORDER BY created_at DESC").fetchall()
+        result = []
+        for p in plugins:
+            d = dict(p)
+            sensors = c.execute(
+                "SELECT sensor_id FROM sensor_plugins WHERE plugin_id=?",
+                (p["id"],),
+            ).fetchall()
+            d["sensor_ids"] = [s["sensor_id"] for s in sensors]
+            result.append(d)
+        return result
