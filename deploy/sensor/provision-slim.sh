@@ -46,26 +46,20 @@ apt-get install -y -qq docker.io docker-compose-v2 ufw fail2ban curl
 systemctl enable --now docker
 
 # ── Harden SSH ────────────────────────────────────────────────────
-echo "[2/5] Hardening operator SSH (moving to port 2200)..."
-if ! grep -q "^Port 2200" /etc/ssh/sshd_config; then
-    sed -i 's/^#\?Port .*/Port 2200/' /etc/ssh/sshd_config
-    grep -q "^Port 2200" /etc/ssh/sshd_config || echo "Port 2200" >> /etc/ssh/sshd_config
-fi
-sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config
-sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config
-systemctl restart ssh 2>/dev/null || systemctl restart sshd 2>/dev/null || true
+# NOTE: We do NOT move SSH to port 2200 here. Operator keeps port 22.
+# SSH honeypot is disabled in docker-compose.sensor.yml to avoid conflict.
+echo "[2/5] SSH stays on port 22 (no honeypot SSH to avoid lockout)..."
 
 # ── Firewall ─────────────────────────────────────────────────────
 echo "[3/5] Configuring firewall..."
 ufw --force reset > /dev/null
 ufw default deny incoming
 ufw default allow outgoing
-ufw allow 2200/tcp comment 'operator SSH'
-ufw allow 22/tcp    comment 'SSH honeypot'
+ufw allow 2200/tcp comment 'operator SSH (if moved later)'
+# Port 22 left for operator SSH — no SSH honeypot in slim mode
 ufw allow 80/tcp    comment 'HTTP honeypot'
 ufw allow 443/tcp   comment 'HTTPS'
 ufw allow 8080/tcp  comment 'HTTP alt'
-ufw allow 2222/tcp  comment 'SSH alt'
 ufw allow 4443/tcp  comment 'PaloAlto'
 ufw allow 8443/tcp  comment 'Citrix'
 ufw allow 10443/tcp comment 'FortiGate'

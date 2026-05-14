@@ -35,32 +35,35 @@ services:
           memory: 128M
           cpus: '0.3'
 
-  # ── SSH Honeypot ────────────────────────────────────────────────
-  ssh-honeypot:
-    build:
-      context: ../..
-      dockerfile: services/ssh/Dockerfile
-    container_name: hp-ssh
-    restart: unless-stopped
-    ports:
-      - "${SSH_PORT:-22}:2222"
-    env_file:
-      - ../../.env
-    environment:
-      - HONEY_DEPLOYMENT_ID=${SENSOR_ID:-hp-sensor-01}
-    volumes:
-      - ./logs:/var/log/honeypot
-      - ../../services/ssh/host_key:/app/host_key
-    networks:
-      - sensor-net
-    cap_drop: [ALL]
-    security_opt:
-      - no-new-privileges:true
-    deploy:
-      resources:
-        limits:
-          memory: 128M
-          cpus: '0.3'
+  # ── SSH Honeypot (DISABLED by default — conflicts with operator SSH) ──
+  # Uncomment if operator SSH is moved to port 2200 and Oracle security
+  # list has 2200 open. Otherwise leave disabled to avoid lockout.
+  #
+  # ssh-honeypot:
+  #   build:
+  #     context: ../..
+  #     dockerfile: services/ssh/Dockerfile
+  #   container_name: hp-ssh
+  #   restart: unless-stopped
+  #   ports:
+  #     - "${SSH_PORT:-2222}:2222"
+  #   env_file:
+  #     - ../../.env
+  #   environment:
+  #     - HONEY_DEPLOYMENT_ID=${SENSOR_ID:-hp-sensor-01}
+  #   volumes:
+  #     - ./logs:/var/log/honeypot
+  #     - ../../services/ssh/host_key:/app/host_key
+  #   networks:
+  #     - sensor-net
+  #   cap_drop: [ALL]
+  #   security_opt:
+  #     - no-new-privileges:true
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         memory: 128M
+  #         cpus: '0.3'
 
   # ── Product spoof: FortiGate ────────────────────────────────────
   fortinet-honeypot:
