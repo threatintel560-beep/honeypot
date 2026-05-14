@@ -28,24 +28,8 @@ from pathlib import Path
 try:
     import httpx
 except ImportError:
-    # Minimal fallback using urllib
-    import urllib.request
-    import urllib.error
-
-    class _MinimalClient:
-        def post(self, url, json_data=None, headers=None, timeout=30):
-            data = json.dumps(json_data).encode() if json_data else None
-            req = urllib.request.Request(url, data=data, headers=headers or {})
-            req.add_header("Content-Type", "application/json")
-            try:
-                resp = urllib.request.urlopen(req, timeout=timeout)
-                return type("R", (), {"status_code": resp.status, "json": lambda: json.loads(resp.read())})()
-            except urllib.error.HTTPError as e:
-                return type("R", (), {"status_code": e.code, "json": lambda: {}})()
-            except Exception:
-                return type("R", (), {"status_code": 0, "json": lambda: {}})()
-
-    httpx = type("httpx", (), {"Client": _MinimalClient})()
+    print("ERROR: httpx required. Install with: pip install httpx", file=sys.stderr)
+    sys.exit(1)
 
 
 def tail_json_file(path: Path, position: int = 0) -> tuple[list[dict], int]:
@@ -77,14 +61,10 @@ def ship_batch(central_url: str, sensor_key: str, events: list[dict]) -> bool:
     headers = {"X-Sensor-Key": sensor_key} if sensor_key else {}
 
     try:
-        if hasattr(httpx, "Client"):
-            client = httpx.Client()
-            r = client.post(url, json_data={"events": events}, headers=headers, timeout=30)
-        else:
-            r = httpx.post(url, json={"events": events}, headers=headers, timeout=30.0)
-        if hasattr(r, "status_code") and r.status_code == 200:
+        r = httpx.post(url, json={"events": events}, headers=headers, timeout=30.0)
+        if r.status_code == 200:
             return True
-        print(f"  [!] Ship failed: status={getattr(r, 'status_code', '?')}", file=sys.stderr)
+        print(f"  [!] Ship failed: status={r.status_code}", file=sys.stderr)
     except Exception as e:
         print(f"  [!] Ship error: {e}", file=sys.stderr)
     return False
@@ -102,12 +82,8 @@ def register_sensor(central_url: str, sensor_key: str, sensor_id: str,
         "plugins": plugins,
     }
     try:
-        if hasattr(httpx, "Client"):
-            client = httpx.Client()
-            r = client.post(url, json_data=body, headers=headers, timeout=15)
-        else:
-            r = httpx.post(url, json=body, headers=headers, timeout=15.0)
-        return hasattr(r, "status_code") and r.status_code == 200
+        r = httpx.post(url, json=body, headers=headers, timeout=15.0)
+        return r.status_code == 200
     except Exception as e:
         print(f"  [!] Register failed: {e}", file=sys.stderr)
         return False
@@ -118,12 +94,8 @@ def send_heartbeat(central_url: str, sensor_key: str, sensor_id: str) -> bool:
     url = f"{central_url.rstrip('/')}/api/sensors/heartbeat"
     headers = {"X-Sensor-Key": sensor_key} if sensor_key else {}
     try:
-        if hasattr(httpx, "Client"):
-            client = httpx.Client()
-            r = client.post(url, json_data={"sensor_id": sensor_id}, headers=headers, timeout=10)
-        else:
-            r = httpx.post(url, json={"sensor_id": sensor_id}, headers=headers, timeout=10.0)
-        return hasattr(r, "status_code") and r.status_code == 200
+        r = httpx.post(url, json={"sensor_id": sensor_id}, headers=headers, timeout=10.0)
+        return r.status_code == 200
     except Exception:
         return False
 
