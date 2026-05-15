@@ -26,6 +26,23 @@ log = logging.getLogger("intel.sensor_receiver")
 router = APIRouter(prefix="/api/sensors")
 
 
+def _push_to_es(event: dict) -> None:
+    """Push event to Elasticsearch (best-effort, non-blocking)."""
+    try:
+        cfg = storage.all_config()
+        es_url = cfg.get("es_url", "http://elasticsearch:9200")
+        index = f"honeypot-events-{time.strftime('%Y.%m.%d')}"
+        import httpx as _httpx
+        _httpx.post(
+            f"{es_url}/{index}/_doc",
+            json=event,
+            headers={"Content-Type": "application/json"},
+            timeout=5.0,
+        )
+    except Exception:
+        pass  # Best-effort — don't fail event ingestion if ES is down
+
+
 async def _check_sensor_key(x_sensor_key: str | None = Header(None)):
     """Validate sensor authentication key."""
     cfg = storage.all_config()
@@ -83,6 +100,9 @@ async def receive_events(request: Request, x_sensor_key: str | None = Header(Non
         # Store the event
         storage.store_event(event)
         processed += 1
+
+        # Also push to Elasticsearch if configured
+        _push_to_es(event)
 
         # Extract IOCs inline
         if event.get("event") in ("cve_exploit_attempt", "http_request", "ssh_command", "ssh_dropper_url"):

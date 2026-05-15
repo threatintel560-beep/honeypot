@@ -82,6 +82,7 @@ services:
     volumes:
       - ./logs:/var/log/honeypot
       - ../../services/http/plugins:/app/plugins:ro
+      - ./certs:/app/certs:ro
     networks:
       - sensor-net
     cap_drop: [ALL]
@@ -110,6 +111,7 @@ services:
     volumes:
       - ./logs:/var/log/honeypot
       - ../../services/http/plugins:/app/plugins:ro
+      - ./certs:/app/certs:ro
     networks:
       - sensor-net
     cap_drop: [ALL]
@@ -138,6 +140,7 @@ services:
     volumes:
       - ./logs:/var/log/honeypot
       - ../../services/http/plugins:/app/plugins:ro
+      - ./certs:/app/certs:ro
     networks:
       - sensor-net
     cap_drop: [ALL]
@@ -148,6 +151,33 @@ services:
         limits:
           memory: 128M
           cpus: '0.3'
+
+  # ── PCAP Capture ─────────────────────────────────────────────────
+  # Captures raw packets on honeypot ports for forensic analysis
+  # PCAPs rotate daily, stored in ./pcaps/
+  pcap-capture:
+    image: alpine:3.19
+    container_name: hp-pcap
+    restart: unless-stopped
+    network_mode: host
+    command: >
+      sh -c "apk add --no-cache tcpdump &&
+             mkdir -p /pcaps &&
+             tcpdump -i any -n
+             -w /pcaps/honeypot_%Y%m%d_%H%M%S.pcap
+             -G 86400 -Z root
+             'tcp port 80 or tcp port 443 or tcp port 4443 or tcp port 8443 or tcp port 10443'
+             -s 0 -c 1000000"
+    volumes:
+      - ./pcaps:/pcaps
+    cap_add:
+      - NET_RAW
+      - NET_ADMIN
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+          cpus: '0.1'
 
   # ── Event Shipper ──────────────────────────────────────────────
   # Reads JSON logs, ships to central Intel over HTTPS

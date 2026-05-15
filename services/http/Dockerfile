@@ -18,4 +18,4 @@ USER hp
 ENV PYTHONPATH=/app
 EXPOSE 8080
 
-CMD ["python", "-u", "-m", "uvicorn", "service.server:app", "--host", "0.0.0.0", "--port", "8080", "--no-access-log"]
+CMD ["/bin/sh", "/app/service/start.sh"]
