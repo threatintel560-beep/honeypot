@@ -46,9 +46,9 @@ apt-get install -y -qq docker.io docker-compose-v2 ufw fail2ban curl
 systemctl enable --now docker
 
 # ── Harden SSH ────────────────────────────────────────────────────
-# NOTE: We do NOT move SSH to port 2200 here. Operator keeps port 22.
-# SSH honeypot is disabled in docker-compose.sensor.yml to avoid conflict.
-echo "[2/5] SSH stays on port 22 (no honeypot SSH to avoid lockout)..."
+# IMPORTANT: We NEVER modify SSH config. Operator SSH stays on port 22.
+# SSH honeypot is disabled to avoid conflict.
+echo "[2/5] SSH untouched — operator access stays on port 22..."
 
 # ── Firewall ─────────────────────────────────────────────────────
 echo "[3/5] Configuring firewall..."
