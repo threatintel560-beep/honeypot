@@ -172,3 +172,34 @@ async def unassign_plugin(sensor_id: str, request: Request,
         raise HTTPException(400, "plugin_id required")
     storage.unassign_plugin_from_sensor(sensor_id, int(plugin_id))
     return JSONResponse({"ok": True})
+
+
+
+# ── PCAP upload ───────────────────────────────────────────────────
+@router.post("/pcap")
+async def receive_pcap(request: Request, x_sensor_key: str | None = Header(None)):
+    """Receive a pcap file from a remote sensor."""
+    await _check_sensor_key(x_sensor_key)
+
+    form = await request.form()
+    sensor_id = form.get("sensor_id", "unknown")
+    file = form.get("file")
+
+    if not file:
+        raise HTTPException(400, "No file uploaded")
+
+    # Save to /data/pcaps/<sensor_id>/
+    from pathlib import Path
+    pcap_dir = Path("/data/pcaps") / sensor_id
+    pcap_dir.mkdir(parents=True, exist_ok=True)
+
+    filename = f"{sensor_id}_{int(time.time())}_{file.filename}"
+    dest = pcap_dir / filename
+
+    content = await file.read()
+    dest.write_bytes(content)
+
+    size_mb = len(content) / (1024 * 1024)
+    log.info("pcap_received: sensor=%s file=%s size=%.1fMB", sensor_id, filename, size_mb)
+
+    return JSONResponse({"ok": True, "filename": filename, "size_mb": round(size_mb, 1)})

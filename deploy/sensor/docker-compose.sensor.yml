@@ -154,7 +154,7 @@ services:
 
   # ── PCAP Capture ─────────────────────────────────────────────────
   # Captures raw packets on honeypot ports for forensic analysis
-  # PCAPs rotate daily, stored in ./pcaps/
+  # PCAPs rotate at 10MB, stored in ./pcaps/
   pcap-capture:
     image: alpine:3.19
     container_name: hp-pcap
@@ -165,9 +165,10 @@ services:
              mkdir -p /pcaps &&
              tcpdump -i any -n
              -w /pcaps/honeypot_%Y%m%d_%H%M%S.pcap
-             -G 86400 -Z root
+             -C 10
+             -Z root
              'tcp port 80 or tcp port 443 or tcp port 4443 or tcp port 8443 or tcp port 10443'
-             -s 0 -c 1000000"
+             -s 0"
     volumes:
       - ./pcaps:/pcaps
     cap_add:
@@ -178,6 +179,32 @@ services:
         limits:
           memory: 64M
           cpus: '0.1'
+
+  # ── PCAP Shipper ─────────────────────────────────────────────────
+  # Watches for completed 10MB pcap files and uploads to central
+  pcap-shipper:
+    build:
+      context: ../..
+      dockerfile: deploy/sensor/Dockerfile.shipper
+    container_name: hp-pcap-shipper
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      - CENTRAL_URL=${CENTRAL_URL:-}
+      - SENSOR_KEY=${SENSOR_KEY:-}
+      - SENSOR_ID=${SENSOR_ID:-hp-sensor-01}
+      - PCAP_DIR=/pcaps
+      - PCAP_CHECK_INTERVAL=60
+    volumes:
+      - ./pcaps:/pcaps:ro
+    command: ["python", "-u", "/app/ship_pcaps.py"]
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+          cpus: '0.1'
+    depends_on:
+      - pcap-capture
 
   # ── Event Shipper ──────────────────────────────────────────────
   # Reads JSON logs, ships to central Intel over HTTPS

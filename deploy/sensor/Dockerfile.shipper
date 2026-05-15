@@ -4,9 +4,10 @@ RUN useradd -u 1500 -m -s /bin/bash shipper
 
 WORKDIR /app
 
-RUN pip install --no-cache-dir httpx==0.27.0
+RUN pip install --no-cache-dir httpx==0.27.0 python-multipart==0.0.9
 
 COPY deploy/sensor/ship_events.py /app/ship_events.py
+COPY deploy/sensor/ship_pcaps.py /app/ship_pcaps.py
 COPY deploy/sensor/plugin_sync.py /app/plugin_sync.py
 
 USER shipper
