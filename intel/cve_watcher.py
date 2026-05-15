@@ -40,7 +40,8 @@ def _fetch_kev() -> list[dict]:
     return r.json().get("vulnerabilities", [])
 
 
-def _fetch_nvd_recent(days: int = 8) -> list[dict]:
+def _fetch_nvd_recent(days: int = 90) -> list[dict]:
+    """Fetch recent CVEs from NVD. Default 90 days to catch 2025-2026 criticals."""
     log.info("fetching NVD (last %d days)", days)
     end   = datetime.now(timezone.utc)
     start = end - timedelta(days=days)

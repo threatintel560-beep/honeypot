@@ -3,9 +3,17 @@
 {% block content %}
 <div class="space-y-6">
 
-  <div>
-    <h1 class="font-serif text-3xl text-ink-900">Honeypot Plugins</h1>
-    <p class="text-sm text-ink-500 mt-1">AI-generated CVE emulators running on the honeypot</p>
+  <div class="flex items-end justify-between">
+    <div>
+      <h1 class="font-serif text-3xl text-ink-900">Honeypot Plugins</h1>
+      <p class="text-sm text-ink-500 mt-1">AI-generated CVE emulators running on the honeypot</p>
+    </div>
+    <div class="flex gap-2">
+      <form method="post" action="/plugins/generate-all-critical"
+            onsubmit="return confirm('Generate plugins for ALL critical CVEs (CVSS 9+)? This may take a while with LLM.');">
+        <button class="btn-primary">Generate All Critical (CVSS 9+)</button>
+      </form>
+    </div>
   </div>
 
   <div class="notice-info">

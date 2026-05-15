@@ -112,7 +112,7 @@ _DEFAULT_CONFIG = {
         "VMware", "Microsoft Exchange", "GitLab", "Jenkins", "ActiveMQ",
         "Spring", "Struts", "Log4j", "SolarWinds", "ManageEngine",
     ]),
-    "cve_min_cvss":        "7.0",
+    "cve_min_cvss":        "9.0",
     "cve_only_kev":        "false",
     "es_url":              "http://elasticsearch:9200",
     "es_index":            "honeypot-events-*",
@@ -189,7 +189,7 @@ def upsert_cve(cve: dict[str, Any]) -> bool:
         return existing is None
 
 
-def list_cves(status: str | None = None, limit: int = 200) -> list[dict]:
+def list_cves(status: str | None = None, limit: int = 500) -> list[dict]:
     q = "SELECT * FROM cves"
     params: tuple = ()
     if status:

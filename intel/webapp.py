@@ -175,6 +175,32 @@ def plugins_page(request: Request):
     ))
 
 
+@app.post("/plugins/generate-all-critical")
+def generate_all_critical():
+    """Bulk-generate plugins for all critical CVEs that don't have one yet."""
+    cves = storage.list_cves(limit=1000)
+    generated = 0
+    for cve in cves:
+        if cve.get("status") in ("plugin_drafted", "deployed"):
+            continue
+        if (cve.get("cvss") or 0) < 9.0 and not cve.get("in_kev"):
+            continue
+        # Check if plugin already exists
+        existing = storage.list_plugins(cve_id=cve["cve_id"])
+        if existing:
+            continue
+        try:
+            code, model = plugin_generator.generate(cve["cve_id"], service="auto")
+            from .service_mapper import detect_service
+            svc = detect_service(cve)
+            plugin_generator.save_as_draft(cve["cve_id"], svc, code, model)
+            storage.update_cve_status(cve["cve_id"], "plugin_drafted")
+            generated += 1
+        except Exception:
+            continue
+    return RedirectResponse(f"/plugins?generated={generated}", status_code=303)
+
+
 @app.get("/plugins/{plugin_id}", response_class=HTMLResponse)
 def plugin_detail(request: Request, plugin_id: int):
     p = storage.get_plugin(plugin_id)
