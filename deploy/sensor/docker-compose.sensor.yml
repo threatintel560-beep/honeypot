@@ -152,6 +152,84 @@ services:
           memory: 128M
           cpus: '0.3'
 
+  # ── FTP Honeypot ─────────────────────────────────────────────────
+  ftp-honeypot:
+    build:
+      context: ../..
+      dockerfile: services/ftp/Dockerfile
+    container_name: hp-ftp
+    restart: unless-stopped
+    ports:
+      - "${FTP_PORT:-21}:21"
+    env_file:
+      - ../../.env
+    environment:
+      - HONEY_DEPLOYMENT_ID=${SENSOR_ID:-hp-sensor-01}
+    volumes:
+      - ./logs:/var/log/honeypot
+    networks:
+      - sensor-net
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+          cpus: '0.2'
+
+  # ── Telnet Honeypot ────────────────────────────────────────────
+  telnet-honeypot:
+    build:
+      context: ../..
+      dockerfile: services/telnet/Dockerfile
+    container_name: hp-telnet
+    restart: unless-stopped
+    ports:
+      - "${TELNET_PORT:-23}:23"
+    env_file:
+      - ../../.env
+    environment:
+      - HONEY_DEPLOYMENT_ID=${SENSOR_ID:-hp-sensor-01}
+    volumes:
+      - ./logs:/var/log/honeypot
+    networks:
+      - sensor-net
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+          cpus: '0.2'
+
+  # ── Redis Honeypot ─────────────────────────────────────────────
+  redis-honeypot:
+    build:
+      context: ../..
+      dockerfile: services/redis/Dockerfile
+    container_name: hp-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    env_file:
+      - ../../.env
+    environment:
+      - HONEY_DEPLOYMENT_ID=${SENSOR_ID:-hp-sensor-01}
+    volumes:
+      - ./logs:/var/log/honeypot
+    networks:
+      - sensor-net
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+          cpus: '0.2'
+
   # ── PCAP Capture ─────────────────────────────────────────────────
   # Captures raw packets on honeypot ports for forensic analysis
   # PCAPs rotate at 10MB, stored in ./pcaps/
@@ -167,7 +245,7 @@ services:
              -w /pcaps/honeypot_%Y%m%d_%H%M%S.pcap
              -C 10
              -Z root
-             'tcp port 80 or tcp port 443 or tcp port 4443 or tcp port 8443 or tcp port 10443'
+             'tcp port 21 or tcp port 23 or tcp port 80 or tcp port 443 or tcp port 4443 or tcp port 6379 or tcp port 8443 or tcp port 10443'
              -s 0"
     volumes:
       - ./pcaps:/pcaps
